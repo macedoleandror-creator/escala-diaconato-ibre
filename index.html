@@ -46,6 +46,7 @@ button.sec{background:var(--tx);color:var(--bg)}
 .nm{font:inherit;background:none;border:0;border-bottom:1px dotted #888;color:inherit;padding:0 1px;cursor:pointer}
 .nm:hover{color:#c00;text-decoration:line-through}
 .empty{color:#777;font-style:italic}
+.hd.sp{background:#c00000}.bd.sp{background:#fdeaea;color:#c00000;font-weight:700}.row.sp{background:#fdeaea;color:#b00000;font-weight:700;min-height:44px}
 #prev{max-width:100%;margin-top:14px;border:1px solid var(--ln)}
 </style>
 </head>
@@ -64,7 +65,7 @@ button.sec{background:var(--tx);color:var(--bg)}
 </section>
 
 <section>
-  <h2>Escolha os dias em que deseja servir:</h2>
+  <h2>Escolha os dias em que vai servir</h2>
   <p class="hint">Selecione seu nome, marque os cultos e escolha a função em cada um. Quartas e domingos de manhã: no máximo 6 pessoas. Recepção 1, Recepção 2 e Kids: 2 pessoas em cada. Apoio e domingo à noite: sem limite. Cada pessoa pode servir em no máximo 2 cultos no mês. Depois de inscrito(a), só o administrador pode alterar.</p>
   <div class="badge" id="mode"></div>
   <label class="f" for="nome">Nome do diácono/diaconisa:</label>
@@ -119,14 +120,19 @@ function h(t,a,...k){const e=document.createElement(t);for(const[x,v]of Object.e
 const p2=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate()),dm=d=>p2(d.getDate())+'/'+p2(d.getMonth()+1);
 const svcCount=(k,ex)=>signups.filter(s=>s.svc===k&&s.id!==ex).length,roleCount=(k,r,ex)=>signups.filter(s=>s.svc===k&&s.role===r&&s.id!==ex).length;
 const MAX_P=2;
+const WOMEN=new Set(['Afra Moura','Eduarda Francino','Gilva Bonfim','Carla Rodrigues','Camila','Vânia Cardoso','Cristina','Arlene','Graziela','Nayara Lira','Alda Olivera','Gláucia Moraes','Ludmila Amorim','Ludmila Canuto','Verônica Queiroz','Maria Sirlene Lira','Juliana Bomfim','Laianna Emilia','Cássia Oliveira','Geane','Patricia Agra','Quitéria Leão','Janaína','Fabiana','Thaisa','Jenilde','Tânia','Genilda','Selma Silva','Selma Soares']);
+const isFemKey=k=>weeks(settings.month).some(wk=>wk.fem&&key(wk.w,'w')===k);
 function userCount(nome){const ks=new Set();weeks(settings.month).forEach(wk=>cols(wk).forEach(([t,dt])=>{if(dt)ks.add(key(dt,t))}));return signups.filter(s=>s.name===nome&&ks.has(s.svc)).length}
 function curId(k){const n=$('#nome').value;return n?slug(n)+'_'+k.replace('|','_'):null}
 const data=s=>typeof s.data==='function'?s.data():s.data;
 
-function weeks(ym){const[y,mo]=ym.split('-').map(Number),out=[],n=new Date(y,mo,0).getDate();
- for(let d=1;d<=n;d++){const dt=new Date(y,mo-1,d);if(dt.getDay()!==3)continue;out.push({w:dt,s:new Date(y,mo-1,d+4)})}
+function weeks(ym){const[y,mo]=ym.split('-').map(Number),out=[];
+ for(let d=1;d<=38;d++){const s=new Date(y,mo-1,d);if(s.getDay()!==0)continue;const m0=s.getMonth(),dd=s.getDate();
+  if(m0===mo-1&&dd>7)out.push({w:new Date(s.getFullYear(),m0,dd-4),s,fem:false});
+  else if(m0===mo%12&&dd<=7){out.push({w:new Date(s.getFullYear(),m0,dd-4),s,fem:true});break}}
  return out}
-function cols(wk){return[['w',wk.w,'QUARTA - FEIRA'],['m',wk.s,'DOMINGO - MANHÃ'],['n',wk.s,'DOMINGO - '+settings.pm.toUpperCase()]]}
+const firstSun=dt=>dt.getDay()===0&&dt.getDate()<=7,rolesFor=t=>t==='w'?ROLES.filter(r=>r==='Recepção 1'||r==='Apoio'):ROLES;
+function cols(wk){const f=wk.s&&firstSun(wk.s);return[['w',wk.w,'QUARTA - FEIRA','',wk.fem?'FEMININAS':''],['m',wk.s,'DOMINGO - MANHÃ',f?'CONSAGRAÇÃO':''],['n',wk.s,'DOMINGO - '+settings.pm.toUpperCase(),f?'SANTA CEIA':'']]}
 function key(dt,t){return ymd(dt)+'|'+t}
 function bySvc(){const m=new Map();signups.forEach(s=>{if(!m.has(s.svc))m.set(s.svc,{});const o=m.get(s.svc);(o[s.role]=o[s.role]||[]).push(s)});
  m.forEach(o=>Object.values(o).forEach(a=>a.sort((x,y)=>(x.ts||0)-(y.ts||0))));return m}
@@ -143,12 +149,12 @@ async function setSettings(){const v={month:settings.month,pm:settings.pm,ceia:s
 
 /* ---------- renderização ---------- */
 function renderHead(){const[y,m]=settings.month.split('-').map(Number);$('#mt').textContent=MESES[m-1].toUpperCase()+'/'+y;$('#mon').value=settings.month;$('#pm').value=settings.pm;$('#cd').value=ceiaDate()}
-function renderForm(){const box=$('#weeks');box.replaceChildren();const exCount=$('#nome').value?userCount($('#nome').value):0;
+function renderForm(){const box=$('#weeks');box.replaceChildren();const nomeSel=$('#nome').value,exCount=nomeSel?userCount(nomeSel):0;
  weeks(settings.month).forEach(wk=>{const w=h('div',{class:'wk'});
-  cols(wk).forEach(([t,dt,lab])=>{if(!dt)return;const k=key(dt,t),me=curId(k),lim=t!=='n',n=svcCount(k,me),full=lim&&n>=SVC_MAX,locked=!isAdmin&&!!me&&signups.some(s=>s.id===me),on=sel.has(k)&&!full&&!locked;if(!on)sel.delete(k);const capped=!on&&!(me&&signups.some(s=>s.id===me))&&exCount+sel.size>=MAX_P;
-   const cb=h('input',{type:'checkbox',id:'c'+k.replace(/\W/g,''),checked:on,disabled:full||locked||capped});
-   const rs=h('select',{'aria-label':'Função em '+dm(dt),disabled:!on},ROLES.map(r=>{const rf=ROLE_MAX[r]&&roleCount(k,r,me)>=ROLE_MAX[r];return h('option',{value:r,selected:sel.get(k)===r,disabled:rf},r+(rf?' (completo)':''))}));
-   const row=h('div',{class:'row'+(on?' on':'')},cb,h('label',{for:cb.id},(t==='w'?'Qua ':'Dom ')+dm(dt)+' · '+(t==='w'?'noite':t==='m'?'manhã':settings.pm.toLowerCase()),h('small',{style:'display:block;color:var(--mu)'},(capped?'Limite de 2 serviços atingido':full?'Completo (6/6)':lim?n+'/6 vagas ocupadas':n+' inscritos')+(me&&signups.some(s=>s.id===me)?(locked?' · já inscrito(a): só o administrador altera':' · você já está nesta escala'):''))),rs);
+  cols(wk).forEach(([t,dt,lab,sp,sf])=>{if(!dt)return;if(sp){if(t==='m')w.append(h('div',{class:'row sp'},dm(dt)+' · Consagração (manhã) e Santa Ceia (noite): todos os diáconos'));return}const k=key(dt,t),me=curId(k),lim=t!=='n',n=svcCount(k,me),full=lim&&n>=SVC_MAX,locked=!isAdmin&&!!me&&signups.some(s=>s.id===me),femNo=!!sf&&!!nomeSel&&!WOMEN.has(nomeSel),on=sel.has(k)&&!full&&!locked&&!femNo;if(!on)sel.delete(k);const capped=!on&&!(me&&signups.some(s=>s.id===me))&&exCount+sel.size>=MAX_P;
+   const cb=h('input',{type:'checkbox',id:'c'+k.replace(/\W/g,''),checked:on,disabled:full||locked||capped||femNo});
+   const rs=h('select',{'aria-label':'Função em '+dm(dt),disabled:!on},rolesFor(t).map(r=>{const rf=ROLE_MAX[r]&&roleCount(k,r,me)>=ROLE_MAX[r];return h('option',{value:r,selected:sel.get(k)===r,disabled:rf},r+(rf?' (completo)':''))}));
+   const row=h('div',{class:'row'+(on?' on':'')},cb,h('label',{for:cb.id},(t==='w'?'Qua ':'Dom ')+dm(dt)+' · '+(t==='w'?(sf?'noite · femininas':'noite'):t==='m'?'manhã':settings.pm.toLowerCase()),h('small',{style:'display:block;color:var(--mu)'},(femNo?'Somente mulheres nesta quarta':capped?'Limite de 2 serviços atingido':full?'Completo (6/6)':lim?n+'/6 vagas ocupadas':n+' inscritos')+(me&&signups.some(s=>s.id===me)?(locked?' · já inscrito(a): só o administrador altera':' · você já está nesta escala'):''))),rs);
    cb.addEventListener('change',()=>{rs.disabled=!cb.checked;row.classList.toggle('on',cb.checked);cb.checked?sel.set(k,rs.value):sel.delete(k);renderForm();const f=document.getElementById(cb.id);if(f)f.focus()});
    rs.addEventListener('change',()=>sel.set(k,rs.value));w.append(row)});
   box.append(w)})}
@@ -158,8 +164,8 @@ function cellBody(o){const rows=ROLES.filter(r=>o&&o[r]);if(!rows.length)return[
    el.append(isAdmin?h('button',{class:'nm',type:'button',title:'Remover '+s.name,'aria-label':'Remover '+s.name,onclick:()=>store.del(s.id)},s.name):h('span',{},s.name))});return el})}
 function renderTable(){const m=bySvc(),g=h('div',{class:'grid'});
  weeks(settings.month).forEach(wk=>{const cs=cols(wk);
-  cs.forEach(([t,dt,lab])=>g.append(h('div',{class:'hd'},dt?dm(dt)+' ('+lab+')':'')));
-  cs.forEach(([t,dt])=>g.append(h('div',{class:'bd'},dt?cellBody(m.get(key(dt,t))):'')))});
+  cs.forEach(([t,dt,lab,sp,sf])=>g.append(h('div',{class:'hd'+(sp?' sp':'')},dt?dm(dt)+' ('+lab+')'+(sf?' '+sf:''):'')));
+  cs.forEach(([t,dt,lab,sp])=>g.append(sp?h('div',{class:'bd sp'},h('div',{},sp),h('div',{},'(TODOS OS DIÁCONOS)')):h('div',{class:'bd'},dt?cellBody(m.get(key(dt,t))):'')))});
  $('#tbl').replaceChildren(g);$('#adm').textContent=isAdmin?'Toque em um nome para removê-lo da escala.':'Depois de inscrito(a), só o administrador pode alterar ou remover nomes.';renderForm();renderCeia()}
 function renderAll(){renderHead();renderForm();renderTable()}
 
@@ -171,6 +177,7 @@ $('#send').addEventListener('click',async()=>{const msg=$('#msg');msg.className=
  if(!sel.size){msg.className='msg err';msg.textContent='Marque pelo menos um culto.';return}
  {const ex=userCount(nome),add=[...sel.keys()].filter(k=>!signups.some(s=>s.id===slug(nome)+'_'+k.replace('|','_'))).length;
   if(ex+add>MAX_P){msg.className='msg err';msg.textContent='Cada pessoa pode servir em no máximo 2 cultos no mês. Você já tem '+ex+'.';return}}
+ if(!WOMEN.has(nome)&&[...sel.keys()].some(isFemKey)){msg.className='msg err';msg.textContent='A quarta-feira “Femininas” é só para diaconisas. Desmarque esse culto.';renderForm();return}
  for(const[k,role]of sel){const me=slug(nome)+'_'+k.replace('|','_');
   if(!isAdmin&&signups.some(s=>s.id===me)){msg.className='msg err';msg.textContent='Você já está inscrito(a) em um dos cultos. Só o administrador pode alterar.';renderForm();return}
   if((!k.endsWith('|n')&&svcCount(k,me)>=SVC_MAX)||(ROLE_MAX[role]&&roleCount(k,role,me)>=ROLE_MAX[role])){msg.className='msg err';msg.textContent='Uma das vagas acabou de ser preenchida. Escolha outro culto ou outra função.';renderForm();return}}
@@ -194,7 +201,7 @@ function draw(ctx,lines,x,y,lh,fs,align){ctx.textAlign='left';lines.forEach((ln,
 function cellLines(ctx,o,maxW){if(!o)return[];const out=[];ROLES.forEach(r=>{if(!o[r])return;
  const names=o[r].map(s=>s.name).join(r.startsWith('Recep')?' e ':', ');out.push(...wrap(ctx,[{t:r.toUpperCase()+': ',b:1},{t:names}],maxW,24))});return out}
 function makeJpg(){const W=1600,cw=W/3,m=bySvc(),c=document.createElement('canvas');c.width=W;c.height=4000;const ctx=c.getContext('2d');ctx.textBaseline='middle';
- const plan=weeks(settings.month).map(wk=>{const cs=cols(wk);const ls=cs.map(([t,dt])=>dt?cellLines(ctx,m.get(key(dt,t)),cw-24):[]);
+ const plan=weeks(settings.month).map(wk=>{const cs=cols(wk);const ls=cs.map(([t,dt,lab,sp])=>dt&&!sp?cellLines(ctx,m.get(key(dt,t)),cw-24):[]);
   return{cs,ls,bh:Math.max(84,Math.max(...ls.map(l=>l.length))*30+26)}});
  const ins=INSTR.map(([ti,ps])=>({ti,ls:ps.map(p=>wrap(ctx,p.split('*').map((t,i)=>({t,b:i%2===1})),cw-60,18))}));
  const insH=Math.max(...ins.map(b=>40+b.ls.reduce((a,l)=>a+l.length*24+8,0)));
@@ -204,10 +211,10 @@ function makeJpg(){const W=1600,cw=W/3,m=bySvc(),c=document.createElement('canva
  x.font='bold 46px Arial';x.fillText('ESCALA DIACONATO IGREJA ROCHA ETERNA',W/2,36);
  const[y,mo]=settings.month.split('-').map(Number);x.fillText(MESES[mo-1].toUpperCase()+'/'+y,W/2,88);
  let yy=120;x.lineWidth=1;x.strokeStyle='#000';
- plan.forEach(p=>{p.cs.forEach(([t,dt,lab],i)=>{x.fillStyle='#4f81bd';x.fillRect(i*cw,yy,cw,38);x.strokeRect(i*cw,yy,cw,38);
-   x.fillStyle='#fff';x.textAlign='center';x.font='bold 24px Arial';x.fillText(dt?dm(dt)+' ('+lab+')':'',i*cw+cw/2,yy+20)});
+ plan.forEach(p=>{p.cs.forEach(([t,dt,lab,sp,sf],i)=>{x.fillStyle=sp?'#c00000':'#4f81bd';x.fillRect(i*cw,yy,cw,38);x.strokeRect(i*cw,yy,cw,38);
+   x.fillStyle='#fff';x.textAlign='center';x.font='bold 24px Arial';x.fillText(dt?dm(dt)+' ('+lab+')'+(sf?' '+sf:''):'',i*cw+cw/2,yy+20)});
   yy+=38;
-  p.cs.forEach((_,i)=>{x.strokeStyle='#000';x.strokeRect(i*cw,yy,cw,p.bh);x.fillStyle='#000';
+  p.cs.forEach((c4,i)=>{const sp=c4[3];if(sp){x.fillStyle='#fdeaea';x.fillRect(i*cw,yy,cw,p.bh)}x.strokeStyle='#000';x.strokeRect(i*cw,yy,cw,p.bh);x.fillStyle='#000';if(sp){x.fillStyle='#c00000';x.textAlign='center';x.font='bold 26px Arial';x.fillText(sp,i*cw+cw/2,yy+p.bh/2-15);x.fillText('(TODOS OS DIÁCONOS)',i*cw+cw/2,yy+p.bh/2+15);x.fillStyle='#000'}
    const ls=p.ls[i],th=ls.length*30;draw(x,ls,i*cw+cw/2,yy+(p.bh-th)/2+15,30,24,'center')});
   yy+=p.bh});
  yy+=34;x.fillStyle='#000';x.textAlign='center';x.font='bold 28px Arial';x.fillText('INSTRUÇÕES PARA OS DIÁCONOS NOS CULTOS',W/2,yy);yy+=36;
