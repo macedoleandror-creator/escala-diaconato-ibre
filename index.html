@@ -131,7 +131,7 @@ function weeks(ym){const[y,mo]=ym.split('-').map(Number),out=[];
   if(m0===mo-1&&dd>7)out.push({w:new Date(s.getFullYear(),m0,dd-4),s,fem:false});
   else if(m0===mo%12&&dd<=7){out.push({w:new Date(s.getFullYear(),m0,dd-4),s,fem:true});break}}
  return out}
-const firstSun=dt=>dt.getDay()===0&&dt.getDate()<=7,rolesFor=t=>t==='w'?ROLES.filter(r=>r==='Recepção 1'||r==='Apoio'):ROLES;
+const firstSun=dt=>dt.getDay()===0&&dt.getDate()<=7,rolesFor=t=>t==='w'?ROLES.filter(r=>r==='Recepção 1'||r==='Apoio'):t==='m'?ROLES.filter(r=>r!=='Recepção 2'):ROLES;
 function cols(wk){const f=wk.s&&firstSun(wk.s);return[['w',wk.w,'QUARTA - FEIRA','',wk.fem?'FEMININAS':''],['m',wk.s,'DOMINGO - MANHÃ',f?'CONSAGRAÇÃO':''],['n',wk.s,'DOMINGO - '+settings.pm.toUpperCase(),f?'SANTA CEIA':'']]}
 function key(dt,t){return ymd(dt)+'|'+t}
 function bySvc(){const m=new Map();signups.forEach(s=>{if(!m.has(s.svc))m.set(s.svc,{});const o=m.get(s.svc);(o[s.role]=o[s.role]||[]).push(s)});
