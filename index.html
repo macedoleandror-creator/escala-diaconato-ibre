@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Escala do Diaconato · Rocha Eterna</title>
+<style>
+:root{--bg:#f2f5fa;--sf:#fff;--tx:#14213d;--mu:#5b6578;--ln:#d5dbe6;--red:#d00022;--blue:#4f81bd;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151c;--sf:#1b2029;--tx:#e8ebf2;--mu:#9aa4b8;--ln:#2e3646;--red:#ff4d63;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12151c;--sf:#1b2029;--tx:#e8ebf2;--mu:#9aa4b8;--ln:#2e3646;--red:#ff4d63;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 Arial,Helvetica,sans-serif}
+.top{background:#ff0000;color:#fff;text-align:center;padding:22px 16px}
+.top h1{margin:0;font-size:clamp(20px,4.5vw,34px);letter-spacing:.5px}
+.top p{margin:4px 0 0;font-size:clamp(18px,3.5vw,28px);font-weight:700}
+main{max-width:1100px;margin:0 auto;padding:20px 14px 60px}
+section{background:var(--sf);border:1px solid var(--ln);border-radius:10px;padding:18px;margin-bottom:20px}
+h2{margin:0 0 4px;font-size:20px}
+.hint{margin:0 0 14px;color:var(--mu);font-size:14px}
+label.f{display:block;font-weight:700;margin-bottom:6px}
+input[type=text],input[type=month],input[type=date],select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--ln);border-radius:6px;padding:10px 12px;min-height:44px}
+#nome,#cn,#cr{width:100%;max-width:420px}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.weeks{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;margin:16px 0}
+.wk{border:1px solid var(--ln);border-radius:8px;overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid var(--ln);min-height:52px}
+.row:first-child{border-top:0}
+.row input[type=checkbox]{width:22px;height:22px;accent-color:var(--red);flex:none}
+.row label{flex:1;cursor:pointer}
+.row select{min-height:40px;padding:6px 8px;max-width:130px}
+.row.on{background:color-mix(in srgb,var(--blue) 14%,transparent)}
+button.go,button.sec{font:inherit;font-weight:700;border-radius:8px;padding:12px 20px;min-height:46px;cursor:pointer;border:0}
+button.go{background:var(--red);color:#fff}
+button.sec{background:var(--tx);color:var(--bg)}
+.msg{margin:10px 0 0;font-weight:700;min-height:1.4em}
+.msg.err{color:var(--red)}
+.badge{display:inline-block;font-size:13px;color:var(--mu);margin-bottom:10px}
+.cfg{display:flex;flex-wrap:wrap;gap:16px;align-items:end}
+.tbl{border:1px solid #000;background:#fff;color:#000;overflow-x:auto}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));min-width:700px}
+.hd{background:#4f81bd;color:#fff;font-weight:700;text-align:center;padding:8px 6px;border:1px solid #000;font-size:15px}
+.bd{border:1px solid #000;padding:10px 8px;text-align:center;font-size:15px;min-height:70px;display:flex;flex-direction:column;justify-content:center;gap:3px}
+.bd b{font-weight:700}
+.nm{font:inherit;background:none;border:0;border-bottom:1px dotted #888;color:inherit;padding:0 1px;cursor:pointer}
+.nm:hover{color:#c00;text-decoration:line-through}
+.empty{color:#777;font-style:italic}
+#prev{max-width:100%;margin-top:14px;border:1px solid var(--ln)}
+</style>
+</head>
+<body>
+<header class="top"><h1>ESCALA DIACONATO IGREJA ROCHA ETERNA</h1><p id="mt"></p></header>
+<main>
+<section id="cfgBox" hidden>
+  <h2>Configuração</h2>
+  <p class="hint">Só quem administra a página vê este bloco.</p>
+  <div class="cfg">
+    <div><label class="f" for="mon">Mês da escala</label><input type="month" id="mon"></div>
+    <div><label class="f" for="cd">Data da Santa Ceia</label><input type="date" id="cd"></div>
+    <div><label class="f" for="pm">Culto de domingo à noite/tarde</label>
+      <select id="pm"><option>Noite</option><option>Tarde</option></select></div>
+  </div>
+</section>
+
+<section>
+  <h2>Escolha os dias em que vai servir</h2>
+  <p class="hint">Selecione seu nome, marque os cultos e escolha a função em cada um. Quartas e domingos de manhã: no máximo 6 pessoas. Recepção 1, Recepção 2 e Kids: 2 pessoas em cada. Apoio e domingo à noite: sem limite. Depois de inscrito(a), só o administrador pode alterar.</p>
+  <div class="badge" id="mode"></div>
+  <label class="f" for="nome">Nome do diácono/diaconisa:</label>
+  <select id="nome"><option value="">Selecione seu nome</option></select>
+  <div class="weeks" id="weeks"></div>
+  <button class="go" id="send" type="button">Entrar na escala</button>
+  <p class="msg" id="msg" role="status" aria-live="polite"></p>
+</section>
+
+<section>
+  <h2>Escala do mês</h2>
+  <p class="hint" id="adm"></p>
+  <div class="tbl" id="tbl"></div>
+  <p style="margin:16px 0 0"><button class="sec" id="jpg" type="button">Baixar escala em JPG</button></p>
+  <p class="msg" id="jmsg" role="status" aria-live="polite"></p>
+  <img id="prev" alt="Escala pronta em JPG" hidden>
+</section>
+
+<section>
+  <h2>Escala da Santa Ceia</h2>
+  <p class="hint">Culto de Santa Ceia em <b id="cdate"></b>. Cada pessoa escolhe uma função; depois de inscrita, só o administrador pode alterar.</p>
+  <p class="hint"><b>Vestuário:</b> homens, terno e camisa preta e gravata bordô; mulheres, vestido preto.</p>
+  <label class="f" for="cn">Nome do diácono/diaconisa:</label>
+  <select id="cn"><option value="">Selecione seu nome</option></select>
+  <label class="f" for="cr" style="margin-top:12px">Função</label>
+  <select id="cr"></select>
+  <p><button class="go" id="csend" type="button">Entrar na escala da Santa Ceia</button></p>
+  <p class="msg" id="cmsg" role="status" aria-live="polite"></p>
+  <div class="tbl" id="ctbl"></div>
+  <p style="margin:16px 0 0"><button class="sec" id="cjpg" type="button">Baixar Santa Ceia em JPG</button></p>
+  <p class="msg" id="cjmsg" role="status" aria-live="polite"></p>
+  <img id="cprev" alt="Escala da Santa Ceia pronta em JPG" hidden style="max-width:100%;margin-top:14px;border:1px solid var(--ln)">
+</section>
+</main>
+
+<script>
+const ROLES=['Recepção 1','Recepção 2','Apoio','Kids'];
+const NAMES=['Afra Moura','Eduarda Francino','Rafael Da Silva','Gilva Bonfim','Carla Rodrigues','Gabriel','Camila','Pedro Cardoso','Vânia Cardoso','Cristina','Arlene','Paulo','Graziela','Nayara Lira','Alda Olivera','Neto','Gláucia Moraes','Ludmila Amorim','Ludmila Canuto','Verônica Queiroz','Maria Sirlene Lira','Juliana Bomfim','Laianna Emilia','Franklin André','Cássia Oliveira','Júnior Menezes','Geane','Patricia Agra','Wellington Santos','Quitéria Leão','Janaína','Fabiana','Elio','Fabio','Thaisa','Jenilde','Tânia','Genilda','Selma Silva','Selma Soares','Ricardo Gondim','Vicente','Tayrone'].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+const ROLE_MAX={'Recepção 1':2,'Recepção 2':2,'Kids':2},SVC_MAX=6;
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const INSTR=[
+ ['RECEPÇÃO',['*ABRIR/FECHAR* as portas do templo;','*RECEPCIONAR* os membros e visitantes com amor;']],
+ ['APOIO',['*ACOMODAR* os membros e visitantes, com amor;','*ENTREGAR* os envelopes no momento dos dízimos e ofertas;','*COLOCAR* água para o pastor (momento da palavra);','*AJUDAR* ao pastor na pregação, quando for solicitado (se necessário).']],
+ ['KIDS',['*FAZER RONDAS* ao longo do culto, oferecendo segurança na área dos banheiros e no kids;']]
+];
+const LS='escala-diaconato-v1';
+let d0=new Date();d0=new Date(d0.getFullYear(),d0.getMonth()+1,1);
+let settings={month:d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0'),pm:'Noite'};
+let signups=[],sel=new Map(),store=null,dbRef=null,isAdmin=true;
+const $=s=>document.querySelector(s);
+function h(t,a,...k){const e=document.createElement(t);for(const[x,v]of Object.entries(a||{})){if(x==='class')e.className=v;else if(x.startsWith('on'))e.addEventListener(x.slice(2),v);else if(v===true)e.setAttribute(x,'');else if(v!==false&&v!=null)e.setAttribute(x,v)}k.flat().forEach(c=>{if(c!=null&&c!==false)e.append(c)});return e}
+const p2=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate()),dm=d=>p2(d.getDate())+'/'+p2(d.getMonth()+1);
+const svcCount=(k,ex)=>signups.filter(s=>s.svc===k&&s.id!==ex).length,roleCount=(k,r,ex)=>signups.filter(s=>s.svc===k&&s.role===r&&s.id!==ex).length;
+function curId(k){const n=$('#nome').value;return n?slug(n)+'_'+k.replace('|','_'):null}
+const data=s=>typeof s.data==='function'?s.data():s.data;
+
+function weeks(ym){const[y,mo]=ym.split('-').map(Number),out=[],n=new Date(y,mo,0).getDate();
+ for(let d=1;d<=n;d++){const dt=new Date(y,mo-1,d);if(dt.getDay()!==3)continue;out.push({w:dt,s:new Date(y,mo-1,d+4)})}
+ return out}
+function cols(wk){return[['w',wk.w,'QUARTA - FEIRA'],['m',wk.s,'DOMINGO - MANHÃ'],['n',wk.s,'DOMINGO - '+settings.pm.toUpperCase()]]}
+function key(dt,t){return ymd(dt)+'|'+t}
+function bySvc(){const m=new Map();signups.forEach(s=>{if(!m.has(s.svc))m.set(s.svc,{});const o=m.get(s.svc);(o[s.role]=o[s.role]||[]).push(s)});
+ m.forEach(o=>Object.values(o).forEach(a=>a.sort((x,y)=>(x.ts||0)-(y.ts||0))));return m}
+
+/* ---------- store: local até o banco compartilhado responder ---------- */
+function localLoad(){try{signups=JSON.parse(localStorage.getItem(LS)||'[]')}catch(e){signups=[]}}
+function localSave(){try{localStorage.setItem(LS,JSON.stringify(signups))}catch(e){}}
+store={
+ async set(id,o){if(dbRef){await dbRef.collection('signups').doc(id).set(o)}else{signups=signups.filter(s=>s.id!==id);signups.push({id,...o});localSave();renderTable()}},
+ async del(id){if(dbRef){await dbRef.collection('signups').doc(id).delete()}else{signups=signups.filter(s=>s.id!==id);localSave();renderTable()}}
+};
+async function setSettings(){const v={month:settings.month,pm:settings.pm,ceia:settings.ceia||null};
+ if(dbRef){try{await dbRef.doc('settings/main').set(v)}catch(e){}}else{try{localStorage.setItem(LS+'-cfg',JSON.stringify(v))}catch(e){}}}
+
+/* ---------- renderização ---------- */
+function renderHead(){const[y,m]=settings.month.split('-').map(Number);$('#mt').textContent=MESES[m-1].toUpperCase()+'/'+y;$('#mon').value=settings.month;$('#pm').value=settings.pm;$('#cd').value=ceiaDate()}
+function renderForm(){const box=$('#weeks');box.replaceChildren();
+ weeks(settings.month).forEach(wk=>{const w=h('div',{class:'wk'});
+  cols(wk).forEach(([t,dt,lab])=>{if(!dt)return;const k=key(dt,t),me=curId(k),lim=t!=='n',n=svcCount(k,me),full=lim&&n>=SVC_MAX,locked=!isAdmin&&!!me&&signups.some(s=>s.id===me),on=sel.has(k)&&!full&&!locked;if(!on)sel.delete(k);
+   const cb=h('input',{type:'checkbox',id:'c'+k.replace(/\W/g,''),checked:on,disabled:full||locked});
+   const rs=h('select',{'aria-label':'Função em '+dm(dt),disabled:!on},ROLES.map(r=>{const rf=ROLE_MAX[r]&&roleCount(k,r,me)>=ROLE_MAX[r];return h('option',{value:r,selected:sel.get(k)===r,disabled:rf},r+(rf?' (completo)':''))}));
+   const row=h('div',{class:'row'+(on?' on':'')},cb,h('label',{for:cb.id},(t==='w'?'Qua ':'Dom ')+dm(dt)+' · '+(t==='w'?'noite':t==='m'?'manhã':settings.pm.toLowerCase()),h('small',{style:'display:block;color:var(--mu)'},(full?'Completo (6/6)':lim?n+'/6 vagas ocupadas':n+' inscritos')+(me&&signups.some(s=>s.id===me)?(locked?' · já inscrito(a): só o administrador altera':' · você já está nesta escala'):''))),rs);
+   cb.addEventListener('change',()=>{rs.disabled=!cb.checked;row.classList.toggle('on',cb.checked);cb.checked?sel.set(k,rs.value):sel.delete(k)});
+   rs.addEventListener('change',()=>sel.set(k,rs.value));w.append(row)});
+  box.append(w)})}
+function cellBody(o){const rows=ROLES.filter(r=>o&&o[r]);if(!rows.length)return[h('span',{class:'empty'},'—')];
+ return rows.map(r=>{const el=h('div',{},h('b',{},r.toUpperCase()+': '));
+  o[r].forEach((s,i)=>{if(i)el.append(r.startsWith('Recep')?' e ':', ');
+   el.append(isAdmin?h('button',{class:'nm',type:'button',title:'Remover '+s.name,'aria-label':'Remover '+s.name,onclick:()=>store.del(s.id)},s.name):h('span',{},s.name))});return el})}
+function renderTable(){const m=bySvc(),g=h('div',{class:'grid'});
+ weeks(settings.month).forEach(wk=>{const cs=cols(wk);
+  cs.forEach(([t,dt,lab])=>g.append(h('div',{class:'hd'},dt?dm(dt)+' ('+lab+')':'')));
+  cs.forEach(([t,dt])=>g.append(h('div',{class:'bd'},dt?cellBody(m.get(key(dt,t))):'')))});
+ $('#tbl').replaceChildren(g);$('#adm').textContent=isAdmin?'Toque em um nome para removê-lo da escala.':'Depois de inscrito(a), só o administrador pode alterar ou remover nomes.';renderForm();renderCeia()}
+function renderAll(){renderHead();renderForm();renderTable()}
+
+/* ---------- inscrição ---------- */
+function slug(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x'}
+$('#send').addEventListener('click',async()=>{const msg=$('#msg');msg.className='msg';
+ const nome=$('#nome').value;
+ if(!nome){msg.className='msg err';msg.textContent='Selecione seu nome na lista antes de entrar na escala.';$('#nome').focus();return}
+ if(!sel.size){msg.className='msg err';msg.textContent='Marque pelo menos um culto.';return}
+ for(const[k,role]of sel){const me=slug(nome)+'_'+k.replace('|','_');
+  if(!isAdmin&&signups.some(s=>s.id===me)){msg.className='msg err';msg.textContent='Você já está inscrito(a) em um dos cultos. Só o administrador pode alterar.';renderForm();return}
+  if((!k.endsWith('|n')&&svcCount(k,me)>=SVC_MAX)||(ROLE_MAX[role]&&roleCount(k,role,me)>=ROLE_MAX[role])){msg.className='msg err';msg.textContent='Uma das vagas acabou de ser preenchida. Escolha outro culto ou outra função.';renderForm();return}}
+ try{for(const[k,role]of sel){await store.set(slug(nome)+'_'+k.replace('|','_'),{name:nome,svc:k,role,ts:Date.now()})}
+  msg.textContent=nome+', você está na escala em '+sel.size+(sel.size>1?' cultos.':' culto.');sel.clear();$('#nome').value='';renderForm()}
+ catch(e){msg.className='msg err';msg.textContent='Não foi possível salvar. Tente de novo.'}});
+
+/* ---------- configuração ---------- */
+$('#mon').addEventListener('change',e=>{if(!e.target.value)return;settings.month=e.target.value;delete settings.ceia;sel.clear();renderAll();setSettings()});
+$('#pm').addEventListener('change',e=>{settings.pm=e.target.value;sel.clear();renderAll();setSettings()});
+
+/* ---------- JPG ---------- */
+function wrap(ctx,segs,maxW,fs){const words=[];segs.forEach(s=>s.t.split(/(\s+)/).filter(x=>x).forEach(w=>words.push({t:w,b:s.b})));
+ const lines=[[]];let w=0;
+ words.forEach(o=>{const sp=/^\s+$/.test(o.t);ctx.font=(o.b?'bold ':'')+fs+'px Arial';const m=ctx.measureText(o.t).width,ln=lines[lines.length-1];
+  if(sp&&!ln.length)return;if(!sp&&ln.length&&w+m>maxW){lines.push([]);w=0}
+  lines[lines.length-1].push({...o,m});w+=m});
+ lines.forEach(l=>{while(l.length&&/^\s+$/.test(l[l.length-1].t))l.pop()});return lines}
+function draw(ctx,lines,x,y,lh,fs,align){ctx.textAlign='left';lines.forEach((ln,i)=>{const tw=ln.reduce((a,o)=>a+o.m,0);let cx=align==='center'?x-tw/2:x;
+ ln.forEach(o=>{ctx.font=(o.b?'bold ':'')+fs+'px Arial';ctx.fillText(o.t,cx,y+i*lh);cx+=o.m})})}
+function cellLines(ctx,o,maxW){if(!o)return[];const out=[];ROLES.forEach(r=>{if(!o[r])return;
+ const names=o[r].map(s=>s.name).join(r.startsWith('Recep')?' e ':', ');out.push(...wrap(ctx,[{t:r.toUpperCase()+': ',b:1},{t:names}],maxW,24))});return out}
+function makeJpg(){const W=1600,cw=W/3,m=bySvc(),c=document.createElement('canvas');c.width=W;c.height=4000;const ctx=c.getContext('2d');ctx.textBaseline='middle';
+ const plan=weeks(settings.month).map(wk=>{const cs=cols(wk);const ls=cs.map(([t,dt])=>dt?cellLines(ctx,m.get(key(dt,t)),cw-24):[]);
+  return{cs,ls,bh:Math.max(84,Math.max(...ls.map(l=>l.length))*30+26)}});
+ const ins=INSTR.map(([ti,ps])=>({ti,ls:ps.map(p=>wrap(ctx,p.split('*').map((t,i)=>({t,b:i%2===1})),cw-60,18))}));
+ const insH=Math.max(...ins.map(b=>40+b.ls.reduce((a,l)=>a+l.length*24+8,0)));
+ const H=120+plan.reduce((a,p)=>a+38+p.bh,0)+60+insH+30;
+ c.height=H;const x=c.getContext('2d');x.textBaseline='middle';x.fillStyle='#fff';x.fillRect(0,0,W,H);
+ x.fillStyle='#f00';x.fillRect(0,0,W,120);x.fillStyle='#fff';x.textAlign='center';
+ x.font='bold 46px Arial';x.fillText('ESCALA DIACONATO IGREJA ROCHA ETERNA',W/2,36);
+ const[y,mo]=settings.month.split('-').map(Number);x.fillText(MESES[mo-1].toUpperCase()+'/'+y,W/2,88);
+ let yy=120;x.lineWidth=1;x.strokeStyle='#000';
+ plan.forEach(p=>{p.cs.forEach(([t,dt,lab],i)=>{x.fillStyle='#4f81bd';x.fillRect(i*cw,yy,cw,38);x.strokeRect(i*cw,yy,cw,38);
+   x.fillStyle='#fff';x.textAlign='center';x.font='bold 24px Arial';x.fillText(dt?dm(dt)+' ('+lab+')':'',i*cw+cw/2,yy+20)});
+  yy+=38;
+  p.cs.forEach((_,i)=>{x.strokeStyle='#000';x.strokeRect(i*cw,yy,cw,p.bh);x.fillStyle='#000';
+   const ls=p.ls[i],th=ls.length*30;draw(x,ls,i*cw+cw/2,yy+(p.bh-th)/2+15,30,24,'center')});
+  yy+=p.bh});
+ yy+=34;x.fillStyle='#000';x.textAlign='center';x.font='bold 28px Arial';x.fillText('INSTRUÇÕES PARA OS DIÁCONOS NOS CULTOS',W/2,yy);yy+=36;
+ ins.forEach((b,i)=>{let ty=yy+14;x.textAlign='left';x.font='bold 20px Arial';x.fillStyle='#000';x.fillText(b.ti,i*cw+30,ty);
+  const tw=x.measureText(b.ti).width;x.fillRect(i*cw+30,ty+12,tw,2);ty+=36;
+  b.ls.forEach(l=>{draw(x,l,i*cw+30,ty,24,18,'left');ty+=l.length*24+8})});
+ return new Promise(r=>c.toBlob(r,'image/jpeg',.93))}
+$('#jpg').addEventListener('click',async()=>{const jm=$('#jmsg');jm.className='msg';jm.textContent='Gerando imagem…';
+ try{const blob=await makeJpg(),name='escala-diaconato-'+settings.month+'.jpg';let saved=false;
+  try{const dl=window.claude&&await claude.use('downloads');if(dl){await dl.save({filename:name,data:blob});saved=true}}catch(e){}
+  const img=$('#prev');if(img.dataset.u)URL.revokeObjectURL(img.dataset.u);img.dataset.u=URL.createObjectURL(blob);img.src=img.dataset.u;img.hidden=false;
+  jm.textContent=saved?'Imagem pronta. Confirme o salvamento do arquivo.':'Imagem pronta abaixo: segure ou clique com o botão direito para salvar.'}
+ catch(e){jm.className='msg err';jm.textContent='Não foi possível gerar a imagem.'}});
+
+/* ---------- Santa Ceia ---------- */
+const CROLES=[['Distribuição dos elementos',17],['Recepção',4],['Kids',2],['Apoio',4]];
+function ceiaDate(){if(settings.ceia)return settings.ceia;const[y,mo]=settings.month.split('-').map(Number);for(let d=1;d<=7;d++){const dt=new Date(y,mo-1,d);if(dt.getDay()===0)return ymd(dt)}return settings.month+'-01'}
+const fmtD=s=>s.slice(8)+'/'+s.slice(5,7)+'/'+s.slice(0,4);
+function renderCeia(){const d=ceiaDate(),k='ceia|'+d,L=signups.filter(s=>s.svc===k);$('#cdate').textContent=fmtD(d);
+ const n=$('#cn').value,me=n?slug(n)+'_ceia_'+d:null,cr=$('#cr'),cur=cr.value;
+ cr.replaceChildren(...CROLES.map(([r,m])=>{const c=L.filter(s=>s.role===r&&s.id!==me).length;return h('option',{value:r,disabled:c>=m,selected:cur===r},r+' ('+c+'/'+m+')'+(c>=m?' · completo':''))}));
+ const g=h('div',{class:'cg'});
+ CROLES.forEach(([r,m])=>{const a=L.filter(s=>s.role===r).sort((x,y)=>(x.ts||0)-(y.ts||0)),b=h('div',{class:'bd'});
+  if(a.length){const dv=h('div');a.forEach((s,i)=>{if(i)dv.append(', ');dv.append(isAdmin?h('button',{class:'nm',type:'button',title:'Remover '+s.name,'aria-label':'Remover '+s.name,onclick:()=>store.del(s.id)},s.name):h('span',{},s.name))});b.append(dv)}else b.append(h('span',{class:'empty'},'—'));
+  g.append(h('div',{class:'hd'},r.toUpperCase()+' ('+m+' pessoas) · '+a.length+'/'+m),b)});
+ $('#ctbl').replaceChildren(g)}
+$('#csend').addEventListener('click',async()=>{const m=$('#cmsg');m.className='msg';const n=$('#cn').value,r=$('#cr').value,d=ceiaDate();
+ if(!n){m.className='msg err';m.textContent='Selecione seu nome na lista.';$('#cn').focus();return}
+ const id=slug(n)+'_ceia_'+d,max=CROLES.find(z=>z[0]===r)[1];
+ if(!isAdmin&&signups.some(s=>s.id===id)){m.className='msg err';m.textContent='Você já está na escala da Santa Ceia. Só o administrador pode alterar.';return}
+ if(signups.filter(s=>s.svc==='ceia|'+d&&s.role===r&&s.id!==id).length>=max){m.className='msg err';m.textContent='Essa função já está completa. Escolha outra.';renderCeia();return}
+ try{await store.set(id,{name:n,svc:'ceia|'+d,role:r,ts:Date.now()});m.textContent=n+', você está na escala da Santa Ceia: '+r+'.';$('#cn').value='';renderCeia()}
+ catch(e){m.className='msg err';m.textContent='Não foi possível salvar. Tente de novo.'}});
+function makeCeiaJpg(){const W=1200,pad=40,c=document.createElement('canvas');c.width=W;c.height=10;const x=c.getContext('2d');
+ const d=ceiaDate(),L=signups.filter(s=>s.svc==='ceia|'+d);
+ const dress=wrap(x,[{t:'VESTUÁRIO: ',b:1},{t:'Homens: terno, camisa preta e gravata bordô. Mulheres: vestido preto.'}],W-2*pad,24);
+ const bl=CROLES.map(([r,m])=>{const a=L.filter(s=>s.role===r).sort((p,q)=>(p.ts||0)-(q.ts||0));return{t:r.toUpperCase()+' ('+m+' pessoas)',ls:a.length?wrap(x,[{t:a.map(s=>s.name).join(', ')}],W-2*pad,26):[]}});
+ const bh=b=>Math.max(70,b.ls.length*34+30),H=150+dress.length*32+30+bl.reduce((a,b)=>a+42+bh(b),0)+90;
+ c.height=H;x.textBaseline='middle';x.fillStyle='#fff';x.fillRect(0,0,W,H);
+ x.fillStyle='#f00';x.fillRect(0,0,W,120);x.fillStyle='#fff';x.textAlign='center';x.font='bold 44px Arial';x.fillText('ESCALA DA SANTA CEIA',W/2,42);x.font='bold 28px Arial';x.fillText('CULTO DE SANTA CEIA · '+fmtD(d),W/2,92);
+ let yy=150;x.fillStyle='#000';draw(x,dress,pad,yy,32,24,'left');yy+=dress.length*32+30;x.lineWidth=1;x.strokeStyle='#000';
+ bl.forEach(b=>{x.fillStyle='#4f81bd';x.fillRect(0,yy,W,42);x.strokeRect(0,yy,W,42);x.fillStyle='#fff';x.textAlign='center';x.font='bold 26px Arial';x.fillText(b.t,W/2,yy+22);yy+=42;
+  x.strokeRect(0,yy,W,bh(b));x.fillStyle='#000';draw(x,b.ls,W/2,yy+(bh(b)-b.ls.length*34)/2+17,34,26,'center');yy+=bh(b)});
+ x.fillStyle='#000';x.textAlign='center';x.font='bold 26px Arial';x.fillText('Servindo com excelência, amor e unidade.',W/2,yy+45);
+ return new Promise(r=>c.toBlob(r,'image/jpeg',.93))}
+$('#cjpg').addEventListener('click',async()=>{const jm=$('#cjmsg');jm.className='msg';jm.textContent='Gerando imagem…';
+ try{const blob=await makeCeiaJpg(),name='escala-santa-ceia-'+ceiaDate()+'.jpg';let saved=false;
+  try{const dl=window.claude&&await claude.use('downloads');if(dl){await dl.save({filename:name,data:blob});saved=true}}catch(e){}
+  const img=$('#cprev');if(img.dataset.u)URL.revokeObjectURL(img.dataset.u);img.dataset.u=URL.createObjectURL(blob);img.src=img.dataset.u;img.hidden=false;
+  jm.textContent=saved?'Imagem pronta. Confirme o salvamento do arquivo.':'Imagem pronta abaixo: segure ou clique com o botão direito para salvar.'}
+ catch(e){jm.className='msg err';jm.textContent='Não foi possível gerar a imagem.'}});
+
+/* ---------- início ---------- */
+try{const c=JSON.parse(localStorage.getItem(LS+'-cfg')||'null');if(c&&c.month){settings=c}}catch(e){}
+NAMES.forEach(n=>{$('#nome').append(h('option',{value:n},n));$('#cn').append(h('option',{value:n},n))});$('#nome').addEventListener('change',renderForm);$('#cn').addEventListener('change',renderCeia);$('#cd').addEventListener('change',e=>{if(!e.target.value)return;settings.ceia=e.target.value;renderAll();setSettings()});localLoad();renderAll();$('#cfgBox').hidden=false;$('#mode').textContent='Modo local: as inscrições ficam apenas neste aparelho.';
+(async()=>{try{if(!(window.claude&&claude.use))return;
+ const db=await claude.use('db');if(!db)return;const user=await claude.use('user');
+ dbRef=db;isAdmin=!!(user&&user.canEdit&&user.canEdit());$('#cfgBox').hidden=!isAdmin;
+ $('#mode').textContent='Escala compartilhada: todos que abrirem o link veem as mesmas inscrições.';
+ db.collection('signups').onSnapshot(s=>{signups=s.docs.map(x=>({id:x.id,...data(x)}));renderTable()},()=>{});
+ db.doc('settings/main').onSnapshot(s=>{const v=s&&data(s);if(v&&v.month){settings={month:v.month,pm:v.pm||'Noite',ceia:v.ceia||undefined};sel.clear();renderAll()}},()=>{})
+}catch(e){}})();
+</script>
+</body>
+</html>
