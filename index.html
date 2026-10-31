@@ -64,8 +64,8 @@ button.sec{background:var(--tx);color:var(--bg)}
 </section>
 
 <section>
-  <h2>Escolha os dias em que vai servir</h2>
-  <p class="hint">Selecione seu nome, marque os cultos e escolha a função em cada um. Quartas e domingos de manhã: no máximo 6 pessoas. Recepção 1, Recepção 2 e Kids: 2 pessoas em cada. Apoio e domingo à noite: sem limite. Depois de inscrito(a), só o administrador pode alterar.</p>
+  <h2>Escolha os dias em que deseja servir:</h2>
+  <p class="hint">Selecione seu nome, marque os cultos e escolha a função em cada um. Quartas e domingos de manhã: no máximo 6 pessoas. Recepção 1, Recepção 2 e Kids: 2 pessoas em cada. Apoio e domingo à noite: sem limite. Cada pessoa pode servir em no máximo 2 cultos no mês. Depois de inscrito(a), só o administrador pode alterar.</p>
   <div class="badge" id="mode"></div>
   <label class="f" for="nome">Nome do diácono/diaconisa:</label>
   <select id="nome"><option value="">Selecione seu nome</option></select>
@@ -118,6 +118,8 @@ const $=s=>document.querySelector(s);
 function h(t,a,...k){const e=document.createElement(t);for(const[x,v]of Object.entries(a||{})){if(x==='class')e.className=v;else if(x.startsWith('on'))e.addEventListener(x.slice(2),v);else if(v===true)e.setAttribute(x,'');else if(v!==false&&v!=null)e.setAttribute(x,v)}k.flat().forEach(c=>{if(c!=null&&c!==false)e.append(c)});return e}
 const p2=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate()),dm=d=>p2(d.getDate())+'/'+p2(d.getMonth()+1);
 const svcCount=(k,ex)=>signups.filter(s=>s.svc===k&&s.id!==ex).length,roleCount=(k,r,ex)=>signups.filter(s=>s.svc===k&&s.role===r&&s.id!==ex).length;
+const MAX_P=2;
+function userCount(nome){const ks=new Set();weeks(settings.month).forEach(wk=>cols(wk).forEach(([t,dt])=>{if(dt)ks.add(key(dt,t))}));return signups.filter(s=>s.name===nome&&ks.has(s.svc)).length}
 function curId(k){const n=$('#nome').value;return n?slug(n)+'_'+k.replace('|','_'):null}
 const data=s=>typeof s.data==='function'?s.data():s.data;
 
@@ -141,13 +143,13 @@ async function setSettings(){const v={month:settings.month,pm:settings.pm,ceia:s
 
 /* ---------- renderização ---------- */
 function renderHead(){const[y,m]=settings.month.split('-').map(Number);$('#mt').textContent=MESES[m-1].toUpperCase()+'/'+y;$('#mon').value=settings.month;$('#pm').value=settings.pm;$('#cd').value=ceiaDate()}
-function renderForm(){const box=$('#weeks');box.replaceChildren();
+function renderForm(){const box=$('#weeks');box.replaceChildren();const exCount=$('#nome').value?userCount($('#nome').value):0;
  weeks(settings.month).forEach(wk=>{const w=h('div',{class:'wk'});
-  cols(wk).forEach(([t,dt,lab])=>{if(!dt)return;const k=key(dt,t),me=curId(k),lim=t!=='n',n=svcCount(k,me),full=lim&&n>=SVC_MAX,locked=!isAdmin&&!!me&&signups.some(s=>s.id===me),on=sel.has(k)&&!full&&!locked;if(!on)sel.delete(k);
-   const cb=h('input',{type:'checkbox',id:'c'+k.replace(/\W/g,''),checked:on,disabled:full||locked});
+  cols(wk).forEach(([t,dt,lab])=>{if(!dt)return;const k=key(dt,t),me=curId(k),lim=t!=='n',n=svcCount(k,me),full=lim&&n>=SVC_MAX,locked=!isAdmin&&!!me&&signups.some(s=>s.id===me),on=sel.has(k)&&!full&&!locked;if(!on)sel.delete(k);const capped=!on&&!(me&&signups.some(s=>s.id===me))&&exCount+sel.size>=MAX_P;
+   const cb=h('input',{type:'checkbox',id:'c'+k.replace(/\W/g,''),checked:on,disabled:full||locked||capped});
    const rs=h('select',{'aria-label':'Função em '+dm(dt),disabled:!on},ROLES.map(r=>{const rf=ROLE_MAX[r]&&roleCount(k,r,me)>=ROLE_MAX[r];return h('option',{value:r,selected:sel.get(k)===r,disabled:rf},r+(rf?' (completo)':''))}));
-   const row=h('div',{class:'row'+(on?' on':'')},cb,h('label',{for:cb.id},(t==='w'?'Qua ':'Dom ')+dm(dt)+' · '+(t==='w'?'noite':t==='m'?'manhã':settings.pm.toLowerCase()),h('small',{style:'display:block;color:var(--mu)'},(full?'Completo (6/6)':lim?n+'/6 vagas ocupadas':n+' inscritos')+(me&&signups.some(s=>s.id===me)?(locked?' · já inscrito(a): só o administrador altera':' · você já está nesta escala'):''))),rs);
-   cb.addEventListener('change',()=>{rs.disabled=!cb.checked;row.classList.toggle('on',cb.checked);cb.checked?sel.set(k,rs.value):sel.delete(k)});
+   const row=h('div',{class:'row'+(on?' on':'')},cb,h('label',{for:cb.id},(t==='w'?'Qua ':'Dom ')+dm(dt)+' · '+(t==='w'?'noite':t==='m'?'manhã':settings.pm.toLowerCase()),h('small',{style:'display:block;color:var(--mu)'},(capped?'Limite de 2 serviços atingido':full?'Completo (6/6)':lim?n+'/6 vagas ocupadas':n+' inscritos')+(me&&signups.some(s=>s.id===me)?(locked?' · já inscrito(a): só o administrador altera':' · você já está nesta escala'):''))),rs);
+   cb.addEventListener('change',()=>{rs.disabled=!cb.checked;row.classList.toggle('on',cb.checked);cb.checked?sel.set(k,rs.value):sel.delete(k);renderForm();const f=document.getElementById(cb.id);if(f)f.focus()});
    rs.addEventListener('change',()=>sel.set(k,rs.value));w.append(row)});
   box.append(w)})}
 function cellBody(o){const rows=ROLES.filter(r=>o&&o[r]);if(!rows.length)return[h('span',{class:'empty'},'—')];
@@ -167,6 +169,8 @@ $('#send').addEventListener('click',async()=>{const msg=$('#msg');msg.className=
  const nome=$('#nome').value;
  if(!nome){msg.className='msg err';msg.textContent='Selecione seu nome na lista antes de entrar na escala.';$('#nome').focus();return}
  if(!sel.size){msg.className='msg err';msg.textContent='Marque pelo menos um culto.';return}
+ {const ex=userCount(nome),add=[...sel.keys()].filter(k=>!signups.some(s=>s.id===slug(nome)+'_'+k.replace('|','_'))).length;
+  if(ex+add>MAX_P){msg.className='msg err';msg.textContent='Cada pessoa pode servir em no máximo 2 cultos no mês. Você já tem '+ex+'.';return}}
  for(const[k,role]of sel){const me=slug(nome)+'_'+k.replace('|','_');
   if(!isAdmin&&signups.some(s=>s.id===me)){msg.className='msg err';msg.textContent='Você já está inscrito(a) em um dos cultos. Só o administrador pode alterar.';renderForm();return}
   if((!k.endsWith('|n')&&svcCount(k,me)>=SVC_MAX)||(ROLE_MAX[role]&&roleCount(k,role,me)>=ROLE_MAX[role])){msg.className='msg err';msg.textContent='Uma das vagas acabou de ser preenchida. Escolha outro culto ou outra função.';renderForm();return}}
