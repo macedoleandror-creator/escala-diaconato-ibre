@@ -20,7 +20,7 @@ section{background:var(--sf);border:1px solid var(--ln);border-radius:10px;paddi
 h2{margin:0 0 4px;font-size:20px}
 .hint{margin:0 0 14px;color:var(--mu);font-size:14px}
 label.f{display:block;font-weight:700;margin-bottom:6px}
-input[type=text],input[type=month],input[type=date],select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--ln);border-radius:6px;padding:10px 12px;min-height:44px}
+input[type=text],input[type=password],input[type=month],input[type=date],select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--ln);border-radius:6px;padding:10px 12px;min-height:44px}
 #nome,#cn,#cr{width:100%;max-width:420px}
 :focus-visible{outline:3px solid var(--blue);outline-offset:2px}
 .weeks{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;margin:16px 0}
@@ -99,11 +99,27 @@ button.sec{background:var(--tx);color:var(--bg)}
   <p class="msg" id="cjmsg" role="status" aria-live="polite"></p>
   <img id="cprev" alt="Escala da Santa Ceia pronta em JPG" hidden style="max-width:100%;margin-top:14px;border:1px solid var(--ln)">
 </section>
+<section id="admBox" hidden>
+  <h2>Administrador</h2>
+  <p class="hint">Entre para alterar ou remover nomes e mudar o mês da escala.</p>
+  <div class="cfg">
+    <div><label class="f" for="ae">E-mail</label><input type="text" id="ae" autocomplete="username"></div>
+    <div><label class="f" for="ap">Senha</label><input type="password" id="ap" autocomplete="current-password"></div>
+    <button class="go" id="alogin" type="button">Entrar</button>
+    <button class="sec" id="alogout" type="button" hidden>Sair</button>
+  </div>
+  <p class="msg" id="amsg" role="status" aria-live="polite"></p>
+</section>
 </main>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
+/* Configuração do projeto Firebase escala-diaconato */
+const FIREBASE_CONFIG={apiKey:"AIzaSyDjzCrOa9-apzUEc9ohQJ4PLaQouHGRMV8",authDomain:"escala-diaconato.firebaseapp.com",projectId:"escala-diaconato",storageBucket:"escala-diaconato.firebasestorage.app",messagingSenderId:"28365197894",appId:"1:28365197894:web:e08d90e6479fe48a8c7047"};
 const ROLES=['Recepção 1','Recepção 2','Apoio','Kids'];
-const NAMES=['Afra Moura','Ana Paula','Eduarda','Rafael','Gilva','Carla','Gabriel','Camila','Pedro Cardoso','Vânia Cardoso','Cristina','Arlene','Paulo','Graziela','Nayara','Alda','Neto','Gláucia','Ludmila Amorim','Ludmila Canuto','Verônica','Sirlene','Juliana Bomfim','Laianna','Franklin','Cássia','Júnior Menezes','Geane','Patricia Agra','Wellington','Quitéria','Janaína','Fabiana','Elio','Fabio','Thaisa','Jenilde','Tânia','Genilda','Selma Silva','Selma Soares','Ricardo Gondim','Vicente','Tayrone'].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+const NAMES=['Afra Moura','Eduarda','Rafael','Gilva','Carla','Gabriel','Camila','Pedro Cardoso','Vânia Cardoso','Cristina','Arlene','Paulo','Graziela','Nayara','Alda','Neto','Gláucia','Ludmila Amorim','Ludmila Canuto','Verônica','Sirlene','Juliana Bomfim','Laianna','Franklin','Cássia','Júnior Menezes','Geane','Patricia Agra','Wellington','Quitéria','Janaína','Fabiana','Elio','Fabio','Thaisa','Jenilde','Tânia','Genilda','Selma Silva','Selma Soares','Ricardo Gondim','Vicente','Tayrone'].sort((a,b)=>a.localeCompare(b,'pt-BR'));
 const ROLE_MAX={'Recepção 1':2,'Recepção 2':2,'Kids':2},SVC_MAX=6;
 const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const INSTR=[
@@ -270,13 +286,18 @@ $('#cjpg').addEventListener('click',async()=>{const jm=$('#cjmsg');jm.className=
 /* ---------- início ---------- */
 try{const c=JSON.parse(localStorage.getItem(LS+'-cfg')||'null');if(c&&c.month){settings=c}}catch(e){}
 NAMES.forEach(n=>{$('#nome').append(h('option',{value:n},n));$('#cn').append(h('option',{value:n},n))});$('#nome').addEventListener('change',renderForm);$('#cn').addEventListener('change',renderCeia);$('#cd').addEventListener('change',e=>{if(!e.target.value)return;settings.ceia=e.target.value;renderAll();setSettings()});localLoad();renderAll();$('#cfgBox').hidden=false;$('#mode').textContent='Modo local: as inscrições ficam apenas neste aparelho.';
-(async()=>{try{if(!(window.claude&&claude.use))return;
- const db=await claude.use('db');if(!db)return;const user=await claude.use('user');
- dbRef=db;isAdmin=!!(user&&user.canEdit&&user.canEdit());$('#cfgBox').hidden=!isAdmin;
+(function(){try{
+ if(!window.firebase||!FIREBASE_CONFIG.apiKey||FIREBASE_CONFIG.apiKey.startsWith('COLE')){$('#mode').textContent='Modo local: o Firebase ainda não foi configurado, então as inscrições ficam só neste aparelho.';return}
+ firebase.initializeApp(FIREBASE_CONFIG);
+ const fdb=firebase.firestore(),fauth=firebase.auth();
+ dbRef=fdb;isAdmin=false;signups=[];$('#cfgBox').hidden=true;$('#admBox').hidden=false;
  $('#mode').textContent='Escala compartilhada: todos que abrirem o link veem as mesmas inscrições.';
- db.collection('signups').onSnapshot(s=>{signups=s.docs.map(x=>({id:x.id,...data(x)}));renderTable()},()=>{});
- db.doc('settings/main').onSnapshot(s=>{const v=s&&data(s);if(v&&v.month){settings={month:v.month,pm:v.pm||'Noite',ceia:v.ceia||undefined};sel.clear();renderAll()}},()=>{})
-}catch(e){}})();
+ fdb.collection('signups').onSnapshot(s=>{signups=s.docs.map(x=>({id:x.id,...x.data()}));renderTable()},()=>{$('#mode').textContent='Não foi possível carregar as inscrições. Confira a conexão e as regras do Firestore.'});
+ fdb.doc('settings/main').onSnapshot(s=>{const v=s&&data(s);if(v&&v.month){settings={month:v.month,pm:v.pm||'Noite',ceia:v.ceia||undefined};sel.clear();renderAll()}},()=>{});
+ fauth.onAuthStateChanged(u=>{isAdmin=!!u;$('#cfgBox').hidden=!isAdmin;$('#alogin').hidden=isAdmin;$('#alogout').hidden=!isAdmin;$('#ae').parentElement.hidden=isAdmin;$('#ap').parentElement.hidden=isAdmin;$('#amsg').className='msg';$('#amsg').textContent=isAdmin?'Você está logado como administrador.':'';renderAll()});
+ $('#alogin').addEventListener('click',()=>{const m=$('#amsg');m.className='msg';fauth.signInWithEmailAndPassword($('#ae').value.trim(),$('#ap').value).catch(()=>{m.className='msg err';m.textContent='E-mail ou senha incorretos.'})});
+ $('#alogout').addEventListener('click',()=>fauth.signOut());
+}catch(e){$('#mode').textContent='Erro ao iniciar o Firebase. Confira a configuração.'}})();
 </script>
 </body>
 </html>
