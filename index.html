@@ -48,6 +48,11 @@ button.sec{background:var(--tx);color:var(--bg)}
 .empty{color:#777;font-style:italic}
 .hd.sp{background:#c00000}.bd.sp{background:#fdeaea;color:#c00000;font-weight:700}.row.sp{background:#fdeaea;color:#b00000;font-weight:700;min-height:44px}
 #prev{max-width:100%;margin-top:14px;border:1px solid var(--ln)}
+.amts{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+.wabtn{display:inline-flex;align-items:center;min-height:46px;padding:12px 20px;border-radius:8px;background:#0f7a40;color:#fff;font-weight:700;text-decoration:none}
+#qr{display:block;max-width:100%;height:auto;background:#fff;border:1px solid var(--ln);margin:8px 0}
+#pixCode{width:100%;max-width:560px;min-height:90px;font:13px/1.3 monospace;color:var(--tx);background:var(--bg);border:1px solid var(--ln);border-radius:6px;padding:8px}
+.rk{width:100%;border-collapse:collapse;font-size:15px}.rk th{background:#4f81bd;color:#fff;padding:8px;border:1px solid #000}.rk td{padding:8px;border:1px solid #000;text-align:center}.rk td.n{text-align:left}.rk tr.top td{background:#fff3c4;font-weight:700}
 </style>
 </head>
 <body>
@@ -61,6 +66,11 @@ button.sec{background:var(--tx);color:var(--bg)}
     <div><label class="f" for="cd">Data da Santa Ceia</label><input type="date" id="cd"></div>
     <div><label class="f" for="pm">Culto de domingo à noite/tarde</label>
       <select id="pm"><option>Noite</option><option>Tarde</option></select></div>
+    <div><label class="f" for="pk">Chave PIX da Santa Ceia</label><input type="text" id="pk" autocomplete="off"></div>
+    <div><label class="f" for="pn">Nome do recebedor</label><input type="text" id="pn" autocomplete="off"></div>
+    <div><label class="f" for="pc">Cidade do recebedor</label><input type="text" id="pc" autocomplete="off"></div>
+    <div><label class="f" for="wl">WhatsApp do Dc. Leandro</label><input type="text" id="wl" inputmode="tel" placeholder="71999999999" autocomplete="off"></div>
+    <div><label class="f" for="wt">WhatsApp do Pr. Tiago</label><input type="text" id="wt" inputmode="tel" placeholder="71999999999" autocomplete="off"></div>
   </div>
 </section>
 
@@ -88,6 +98,19 @@ button.sec{background:var(--tx);color:var(--bg)}
   <h2>Escala da Santa Ceia</h2>
   <p class="hint">Culto de Santa Ceia em <b id="cdate"></b>. Cada pessoa escolhe uma função; depois de inscrita, só o administrador pode alterar.</p>
   <p class="hint"><b>Vestuário:</b> homens, terno e camisa preta e gravata bordô; mulheres, vestido preto.</p>
+  <div id="pixBox" hidden>
+    <h3 style="margin:18px 0 6px;font-size:17px">Contribuição para a Santa Ceia</h3>
+    <p class="hint">Escolha um valor para gerar o QR Code do PIX e pague pelo aplicativo do seu banco.</p>
+    <div class="amts" id="amts"></div>
+    <div id="pixOut" hidden>
+      <canvas id="qr" width="300" height="300" aria-label="QR Code do PIX"></canvas>
+      <p class="hint" id="pixInfo"></p>
+      <label class="f" for="pixCode">PIX copia e cola</label>
+      <textarea id="pixCode" readonly></textarea>
+      <p style="margin:8px 0 0"><button class="sec" id="pixCopy" type="button">Copiar código PIX</button></p>
+      <p class="msg" id="pixMsg" role="status" aria-live="polite"></p>
+    </div>
+  </div>
   <label class="f" for="cn">Nome do diácono/diaconisa:</label>
   <select id="cn"><option value="">Selecione seu nome</option></select>
   <label class="f" for="cr" style="margin-top:12px">Função</label>
@@ -99,6 +122,18 @@ button.sec{background:var(--tx);color:var(--bg)}
   <p class="msg" id="cjmsg" role="status" aria-live="polite"></p>
   <img id="cprev" alt="Escala da Santa Ceia pronta em JPG" hidden style="max-width:100%;margin-top:14px;border:1px solid var(--ln)">
 </section>
+<section id="waBox" hidden>
+  <h2>Precisa de ajuda?</h2>
+  <p class="hint">Fale com um administrador pelo WhatsApp.</p>
+  <div class="amts" id="waBtns"></div>
+</section>
+
+<section id="rankBox" hidden>
+  <h2>Frequência dos diáconos</h2>
+  <p class="hint">Visível só para o administrador. Todos os diáconos, do mais ao menos frequente, com base nas inscrições de todos os meses registrados (quartas, domingos e Santa Ceia). Os 10 mais frequentes aparecem em destaque.</p>
+  <div class="tbl" id="rank"></div>
+</section>
+
 <section id="admBox" hidden>
   <h2>Administrador</h2>
   <p class="hint">Entre para alterar ou remover nomes e mudar o mês da escala.</p>
@@ -112,6 +147,7 @@ button.sec{background:var(--tx);color:var(--bg)}
 </section>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -119,7 +155,7 @@ button.sec{background:var(--tx);color:var(--bg)}
 /* Configuração do projeto Firebase escala-diaconato */
 const FIREBASE_CONFIG={apiKey:"AIzaSyDjzCrOa9-apzUEc9ohQJ4PLaQouHGRMV8",authDomain:"escala-diaconato.firebaseapp.com",projectId:"escala-diaconato",storageBucket:"escala-diaconato.firebasestorage.app",messagingSenderId:"28365197894",appId:"1:28365197894:web:e08d90e6479fe48a8c7047"};
 const ROLES=['Recepção 1','Recepção 2','Apoio','Kids'];
-const NAMES=['Afra Moura','Eduarda','Rafael','Gilva','Carla','Gabriel','Camila','Pedro Cardoso','Vânia Cardoso','Cristina','Arlene','Paulo','Graziela','Nayara','Alda','Neto','Gláucia','Ludmila Amorim','Ludmila Canuto','Verônica','Sirlene','Juliana Bomfim','Laianna','Franklin','Cássia','Júnior Menezes','Geane','Patricia Agra','Wellington','Quitéria','Janaína','Fabiana','Elio','Fabio','Thaisa','Jenilde','Tânia','Genilda','Selma Silva','Selma Soares','Ricardo Gondim','Vicente','Tayrone'].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+const NAMES=['Afra Moura','Eduarda','Rafael','Gilva','Carla','Gabriel','Camila','Pedro Cardoso','Vânia Cardoso','Cristina','Arlene','Paulo','Graziela','Nayara','Alda','Neto','Gláucia','Ludmila Amorim','Ludmila Canuto','Verônica','Sirlene','Juliana Bomfim','Laianna','Franklin','Cássia','Júnior Menezes','Geane','Patricia Agra','Wellington','Quitéria','Janaína','Fabiana','Elio','Fabio','Thaisa','Jenilde','Tânia','Genilda','Selma Silva','Selma Soares','Ricardo Gondim','Vicente','Tayrone','Socorro'].sort((a,b)=>a.localeCompare(b,'pt-BR'));
 const ROLE_MAX={'Recepção 1':2,'Recepção 2':2,'Kids':2},SVC_MAX=6;
 const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 const INSTR=[
@@ -136,7 +172,7 @@ function h(t,a,...k){const e=document.createElement(t);for(const[x,v]of Object.e
 const p2=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate()),dm=d=>p2(d.getDate())+'/'+p2(d.getMonth()+1);
 const svcCount=(k,ex)=>signups.filter(s=>s.svc===k&&s.id!==ex).length,roleCount=(k,r,ex)=>signups.filter(s=>s.svc===k&&s.role===r&&s.id!==ex).length;
 const MAX_P=2;
-const WOMEN=new Set(['Afra Moura','Eduarda','Gilva','Carla','Camila','Vânia Cardoso','Cristina','Arlene','Graziela','Nayara','Alda','Gláucia','Ludmila Amorim','Ludmila Canuto','Verônica','Sirlene','Juliana Bomfim','Laianna','Cássia','Geane','Patricia Agra','Quitéria','Janaína','Fabiana','Thaisa','Jenilde','Tânia','Genilda','Selma Silva','Selma Soares']);
+const WOMEN=new Set(['Afra Moura','Eduarda','Gilva','Carla','Camila','Vânia Cardoso','Cristina','Arlene','Graziela','Nayara','Alda','Gláucia','Ludmila Amorim','Ludmila Canuto','Verônica','Sirlene','Juliana Bomfim','Laianna','Cássia','Geane','Patricia Agra','Quitéria','Janaína','Fabiana','Thaisa','Jenilde','Tânia','Genilda','Selma Silva','Selma Soares','Socorro']);
 const isFemKey=k=>weeks(settings.month).some(wk=>wk.fem&&key(wk.w,'w')===k);
 function userCount(nome){const ks=new Set();weeks(settings.month).forEach(wk=>cols(wk).forEach(([t,dt])=>{if(dt)ks.add(key(dt,t))}));return signups.filter(s=>s.name===nome&&ks.has(s.svc)).length}
 function curId(k){const n=$('#nome').value;return n?slug(n)+'_'+k.replace('|','_'):null}
@@ -160,11 +196,11 @@ store={
  async set(id,o){if(dbRef){await dbRef.collection('signups').doc(id).set(o)}else{signups=signups.filter(s=>s.id!==id);signups.push({id,...o});localSave();renderTable()}},
  async del(id){if(dbRef){await dbRef.collection('signups').doc(id).delete()}else{signups=signups.filter(s=>s.id!==id);localSave();renderTable()}}
 };
-async function setSettings(){const v={month:settings.month,pm:settings.pm,ceia:settings.ceia||null};
+async function setSettings(){const v={month:settings.month,pm:settings.pm,ceia:settings.ceia||null,pix:settings.pix||null,wa:settings.wa||null};
  if(dbRef){try{await dbRef.doc('settings/main').set(v)}catch(e){}}else{try{localStorage.setItem(LS+'-cfg',JSON.stringify(v))}catch(e){}}}
 
 /* ---------- renderização ---------- */
-function renderHead(){const[y,m]=settings.month.split('-').map(Number);$('#mt').textContent=MESES[m-1].toUpperCase()+'/'+y;$('#mon').value=settings.month;$('#pm').value=settings.pm;$('#cd').value=ceiaDate()}
+function renderHead(){const[y,m]=settings.month.split('-').map(Number);$('#mt').textContent=MESES[m-1].toUpperCase()+'/'+y;$('#mon').value=settings.month;$('#pm').value=settings.pm;$('#cd').value=ceiaDate();const px=settings.pix||{};$('#pk').value=px.key||'';$('#pn').value=px.name||'';$('#pc').value=px.city||'';const wa=settings.wa||{};$('#wl').value=wa.l||'';$('#wt').value=wa.t||''}
 function renderForm(){const box=$('#weeks');box.replaceChildren();const nomeSel=$('#nome').value,exCount=nomeSel?userCount(nomeSel):0;
  weeks(settings.month).forEach(wk=>{const w=h('div',{class:'wk'});
   cols(wk).forEach(([t,dt,lab,sp,sf])=>{if(!dt)return;if(sp){if(t==='m')w.append(h('div',{class:'row sp'},dm(dt)+' · Consagração (manhã) e Santa Ceia (noite): todos os diáconos'));return}const k=key(dt,t),me=curId(k),lim=t!=='n',n=svcCount(k,me),full=lim&&n>=SVC_MAX,locked=!isAdmin&&!!me&&signups.some(s=>s.id===me),femNo=!!sf&&!!nomeSel&&!WOMEN.has(nomeSel),on=sel.has(k)&&!full&&!locked;if(!on)sel.delete(k);const capped=!on&&!(me&&signups.some(s=>s.id===me))&&exCount+sel.size>=MAX_P;
@@ -182,7 +218,7 @@ function renderTable(){const m=bySvc(),g=h('div',{class:'grid'});
  weeks(settings.month).forEach(wk=>{const cs=cols(wk);
   cs.forEach(([t,dt,lab,sp,sf])=>g.append(h('div',{class:'hd'+(sp?' sp':'')},dt?dm(dt)+' ('+lab+')'+(sf?' '+sf:''):'')));
   cs.forEach(([t,dt,lab,sp])=>g.append(sp?h('div',{class:'bd sp'},h('div',{},sp),h('div',{},'(TODOS OS DIÁCONOS)')):h('div',{class:'bd'},dt?cellBody(m.get(key(dt,t))):'')))});
- $('#tbl').replaceChildren(g);$('#adm').textContent=isAdmin?'Toque em um nome para removê-lo da escala.':'Depois de inscrito(a), só o administrador pode alterar ou remover nomes.';renderForm();renderCeia()}
+ $('#tbl').replaceChildren(g);$('#adm').textContent=isAdmin?'Toque em um nome para removê-lo da escala.':'Depois de inscrito(a), só o administrador pode alterar ou remover nomes.';renderForm();renderCeia();renderRank();renderPix();renderWa();renderAdminOnly()}
 function renderAll(){renderHead();renderForm();renderTable()}
 
 /* ---------- inscrição ---------- */
@@ -238,7 +274,7 @@ function makeJpg(){const W=1600,cw=W/3,m=bySvc(),c=document.createElement('canva
   const tw=x.measureText(b.ti).width;x.fillRect(i*cw+30,ty+12,tw,2);ty+=36;
   b.ls.forEach(l=>{draw(x,l,i*cw+30,ty,24,18,'left');ty+=l.length*24+8})});
  return new Promise(r=>c.toBlob(r,'image/jpeg',.93))}
-$('#jpg').addEventListener('click',async()=>{const jm=$('#jmsg');jm.className='msg';jm.textContent='Gerando imagem…';
+$('#jpg').addEventListener('click',async()=>{if(!isAdmin)return;const jm=$('#jmsg');jm.className='msg';jm.textContent='Gerando imagem…';
  try{const blob=await makeJpg(),name='escala-diaconato-'+settings.month+'.jpg';let saved=false;
   try{const dl=window.claude&&await claude.use('downloads');if(dl){await dl.save({filename:name,data:blob});saved=true}}catch(e){}
   const img=$('#prev');if(img.dataset.u)URL.revokeObjectURL(img.dataset.u);img.dataset.u=URL.createObjectURL(blob);img.src=img.dataset.u;img.hidden=false;
@@ -276,12 +312,47 @@ function makeCeiaJpg(){const W=1200,pad=40,c=document.createElement('canvas');c.
   x.strokeRect(0,yy,W,bh(b));x.fillStyle='#000';draw(x,b.ls,W/2,yy+(bh(b)-b.ls.length*34)/2+17,34,26,'center');yy+=bh(b)});
  x.fillStyle='#000';x.textAlign='center';x.font='bold 26px Arial';x.fillText('Servindo com excelência, amor e unidade.',W/2,yy+45);
  return new Promise(r=>c.toBlob(r,'image/jpeg',.93))}
-$('#cjpg').addEventListener('click',async()=>{const jm=$('#cjmsg');jm.className='msg';jm.textContent='Gerando imagem…';
+$('#cjpg').addEventListener('click',async()=>{if(!isAdmin)return;const jm=$('#cjmsg');jm.className='msg';jm.textContent='Gerando imagem…';
  try{const blob=await makeCeiaJpg(),name='escala-santa-ceia-'+ceiaDate()+'.jpg';let saved=false;
   try{const dl=window.claude&&await claude.use('downloads');if(dl){await dl.save({filename:name,data:blob});saved=true}}catch(e){}
   const img=$('#cprev');if(img.dataset.u)URL.revokeObjectURL(img.dataset.u);img.dataset.u=URL.createObjectURL(blob);img.src=img.dataset.u;img.hidden=false;
   jm.textContent=saved?'Imagem pronta. Confirme o salvamento do arquivo.':'Imagem pronta abaixo: segure ou clique com o botão direito para salvar.'}
  catch(e){jm.className='msg err';jm.textContent='Não foi possível gerar a imagem.'}});
+
+/* ---------- PIX e frequência ---------- */
+function crc16(str){let crc=0xFFFF;for(let i=0;i<str.length;i++){crc^=str.charCodeAt(i)<<8;for(let j=0;j<8;j++){crc=(crc&0x8000)?((crc<<1)^0x1021):(crc<<1);crc&=0xFFFF}}return crc.toString(16).toUpperCase().padStart(4,'0')}
+const tlv=(id,v)=>id+String(v.length).padStart(2,'0')+v;
+function pixPayload(key,name,city,amount){
+ const clean=t=>t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9 ]/g,'').trim();
+ const nm=clean(name).slice(0,25)||'IGREJA',ct=clean(city).slice(0,15)||'BRASIL';
+ let p=tlv('00','01')+tlv('01','11')+tlv('26',tlv('00','br.gov.bcb.pix')+tlv('01',key.trim()))+tlv('52','0000')+tlv('53','986');
+ if(amount)p+=tlv('54',amount.toFixed(2));
+ p+=tlv('58','BR')+tlv('59',nm)+tlv('60',ct)+tlv('62',tlv('05','***'))+'6304';
+ return p+crc16(p)}
+function showPix(amount){const px=settings.pix;if(!px||!px.key)return;
+ const code=pixPayload(px.key,px.name||'',px.city||'',amount),cv=$('#qr'),ctx=cv.getContext('2d');
+ $('#pixOut').hidden=false;$('#pixCode').value=code;$('#pixMsg').textContent='';
+ $('#pixInfo').textContent=(amount?'Valor: R$ '+amount.toFixed(2).replace('.',','):'Valor livre: digite o valor no aplicativo do banco')+(px.name?' · Recebedor: '+px.name:'');
+ if(window.qrcode){const q=qrcode(0,'M');q.addData(code);q.make();const n=q.getModuleCount(),z=Math.max(3,Math.floor(300/(n+8)));
+  cv.width=cv.height=(n+8)*z;ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);ctx.fillStyle='#000';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))ctx.fillRect((c+4)*z,(r+4)*z,z,z);cv.hidden=false}
+ else{cv.hidden=true;$('#pixMsg').textContent='Não foi possível gerar o QR Code aqui. Use o código PIX copia e cola abaixo.'}}
+function renderPix(){const ok=!!(settings.pix&&settings.pix.key);$('#pixBox').hidden=!ok;if(!ok)$('#pixOut').hidden=true}
+[10,20,50,100,0].forEach(v=>$('#amts').append(h('button',{class:'sec',type:'button',onclick:()=>showPix(v)},v?'R$ '+v:'Outro valor')));
+$('#pixCopy').addEventListener('click',async()=>{const t=$('#pixCode'),m=$('#pixMsg');try{await navigator.clipboard.writeText(t.value);m.textContent='Código copiado.'}catch(e){t.select();m.textContent='Selecione e copie o código acima.'}});
+['#pk','#pn','#pc'].forEach(i=>$(i).addEventListener('change',()=>{settings.pix={key:$('#pk').value.trim(),name:$('#pn').value.trim(),city:$('#pc').value.trim()};setSettings();renderPix()}));
+function renderRank(){const box=$('#rankBox');box.hidden=!isAdmin;if(!isAdmin)return;
+ const m=new Map();NAMES.forEach(n=>m.set(n,{n,t:0,w:0,d:0,c:0}));
+ signups.forEach(s=>{if(!s.name)return;const o=m.get(s.name)||{n:s.name,t:0,w:0,d:0,c:0};o.t++;const v=String(s.svc);if(v.startsWith('ceia|'))o.c++;else if(v.endsWith('|w'))o.w++;else o.d++;m.set(s.name,o)});
+ const all=[...m.values()].sort((a,b)=>b.t-a.t||a.n.localeCompare(b.n,'pt-BR'));
+ $('#rank').replaceChildren(h('table',{class:'rk'},h('tr',{},['#','Diácono','Total','Quartas','Domingos','Santa Ceia'].map(x=>h('th',{},x))),all.map((o,i)=>h('tr',{class:i<10&&o.t>0?'top':''},h('td',{},String(i+1)),h('td',{class:'n'},(i<10&&o.t>0?'★ ':'')+o.n),h('td',{},h('b',{},String(o.t))),h('td',{},String(o.w)),h('td',{},String(o.d)),h('td',{},String(o.c))))))}
+
+function waLink(t){const d=String(t||'').replace(/\D/g,'');if(d.length<10)return null;return 'https://wa.me/'+(d.length<=11?'55'+d:d)+'?text='+encodeURIComponent('Olá! Preciso de ajuda com a escala do diaconato.')}
+function renderWa(){const wa=settings.wa||{},box=$('#waBtns');box.replaceChildren();
+ [['Dc. Leandro',wa.l],['Pr. Tiago',wa.t]].forEach(([n,t])=>{const u=waLink(t);if(u)box.append(h('a',{class:'wabtn',href:u,target:'_blank',rel:'noopener'},'WhatsApp '+n))});
+ $('#waBox').hidden=!box.children.length}
+function renderAdminOnly(){const a=isAdmin;['#jpg','#cjpg'].forEach(i=>$(i).parentElement.hidden=!a);['#jmsg','#cjmsg'].forEach(i=>$(i).hidden=!a);if(!a){$('#prev').hidden=true;$('#cprev').hidden=true}}
+['#wl','#wt'].forEach(i=>$(i).addEventListener('change',()=>{settings.wa={l:$('#wl').value.trim(),t:$('#wt').value.trim()};setSettings();renderWa()}));
 
 /* ---------- início ---------- */
 try{const c=JSON.parse(localStorage.getItem(LS+'-cfg')||'null');if(c&&c.month){settings=c}}catch(e){}
@@ -290,10 +361,10 @@ NAMES.forEach(n=>{$('#nome').append(h('option',{value:n},n));$('#cn').append(h('
  if(!window.firebase||!FIREBASE_CONFIG.apiKey||FIREBASE_CONFIG.apiKey.startsWith('COLE')){$('#mode').textContent='Modo local: o Firebase ainda não foi configurado, então as inscrições ficam só neste aparelho.';return}
  firebase.initializeApp(FIREBASE_CONFIG);
  const fdb=firebase.firestore(),fauth=firebase.auth();
- dbRef=fdb;isAdmin=false;signups=[];$('#cfgBox').hidden=true;$('#admBox').hidden=false;
+ dbRef=fdb;isAdmin=false;signups=[];renderAdminOnly();renderRank();$('#cfgBox').hidden=true;$('#admBox').hidden=false;
  $('#mode').textContent='Escala compartilhada: todos que abrirem o link veem as mesmas inscrições.';
  fdb.collection('signups').onSnapshot(s=>{signups=s.docs.map(x=>({id:x.id,...x.data()}));renderTable()},()=>{$('#mode').textContent='Não foi possível carregar as inscrições. Confira a conexão e as regras do Firestore.'});
- fdb.doc('settings/main').onSnapshot(s=>{const v=s&&data(s);if(v&&v.month){settings={month:v.month,pm:v.pm||'Noite',ceia:v.ceia||undefined};sel.clear();renderAll()}},()=>{});
+ fdb.doc('settings/main').onSnapshot(s=>{const v=s&&data(s);if(v&&v.month){settings={month:v.month,pm:v.pm||'Noite',ceia:v.ceia||undefined,pix:v.pix||undefined,wa:v.wa||undefined};sel.clear();renderAll()}},()=>{});
  fauth.onAuthStateChanged(u=>{isAdmin=!!u;$('#cfgBox').hidden=!isAdmin;$('#alogin').hidden=isAdmin;$('#alogout').hidden=!isAdmin;$('#ae').parentElement.hidden=isAdmin;$('#ap').parentElement.hidden=isAdmin;$('#amsg').className='msg';$('#amsg').textContent=isAdmin?'Você está logado como administrador.':'';renderAll()});
  $('#alogin').addEventListener('click',()=>{const m=$('#amsg');m.className='msg';fauth.signInWithEmailAndPassword($('#ae').value.trim(),$('#ap').value).catch(()=>{m.className='msg err';m.textContent='E-mail ou senha incorretos.'})});
  $('#alogout').addEventListener('click',()=>fauth.signOut());
