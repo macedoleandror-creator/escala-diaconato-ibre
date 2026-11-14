@@ -103,6 +103,18 @@ button.sec{background:var(--navy);color:#fff}
   <p class="msg" id="msg" role="status" aria-live="polite"></p>
 </section>
 
+<section data-tab="insc">
+  <h2>Justificar ausência</h2>
+  <p class="hint">Não poderá servir em <b id="jmes"></b>? Justifique: seu nome não entra na escala e fica como ausente justificado.</p>
+  <label class="f" for="jn">Diácono(a)</label>
+  <select id="jn"><option value="">Selecione seu nome</option></select>
+  <label class="f" for="jm" style="margin-top:12px">Motivo</label>
+  <select id="jm"><option>Doença</option><option>Viagem</option><option>Trabalho</option><option>Outros</option></select>
+  <div id="jtWrap" hidden><label class="f" for="jt" style="margin-top:12px">Qual o motivo?</label><input type="text" id="jt" maxlength="60" autocomplete="off"></div>
+  <p><button class="sec" id="jsend" type="button">Justificar ausência</button></p>
+  <p class="msg" id="ajmsg" role="status" aria-live="polite"></p>
+</section>
+
 <section data-tab="escala">
   <h2>Escala</h2>
   <p class="hint" id="adm"></p>
@@ -150,6 +162,8 @@ button.sec{background:var(--navy);color:#fff}
   <h2>Frequência</h2>
   <p class="hint">Inscrições por diácono em todos os meses. Os 10 primeiros em destaque.</p>
   <div class="tbl" id="rank"></div>
+  <h3>Ausências justificadas</h3>
+  <div class="tbl" id="just"></div>
 </section>
 
 <section id="admBox" data-tab="admin" hidden>
@@ -218,11 +232,11 @@ async function setSettings(){const v={month:settings.month,pm:settings.pm,ceia:s
  if(dbRef){try{await dbRef.doc('settings/main').set(v)}catch(e){}}else{try{localStorage.setItem(LS+'-cfg',JSON.stringify(v))}catch(e){}}}
 
 /* ---------- renderização ---------- */
-function renderHead(){const[y,m]=settings.month.split('-').map(Number);$('#mt').textContent=MESES[m-1].toUpperCase()+'/'+y;$('#mon').value=settings.month;$('#pm').value=settings.pm;$('#cd').value=ceiaDate();const px=settings.pix||{};$('#pk').value=px.key||'';$('#pn').value=px.name||'';$('#pc').value=px.city||'';const wa=settings.wa||{};$('#wl').value=wa.l||'';$('#wt').value=wa.t||''}
-function renderForm(){const box=$('#weeks');box.replaceChildren();const nomeSel=$('#nome').value,exCount=nomeSel?userCount(nomeSel):0;$('#cota').textContent=nomeSel?exCount+' de '+MAX_P+' cultos usados neste mês':'';
+function renderHead(){const[y,m]=settings.month.split('-').map(Number);$('#mt').textContent=MESES[m-1].toUpperCase()+'/'+y;$('#jmes').textContent=MESES[m-1]+'/'+y;$('#mon').value=settings.month;$('#pm').value=settings.pm;$('#cd').value=ceiaDate();const px=settings.pix||{};$('#pk').value=px.key||'';$('#pn').value=px.name||'';$('#pc').value=px.city||'';const wa=settings.wa||{};$('#wl').value=wa.l||'';$('#wt').value=wa.t||''}
+function renderForm(){const box=$('#weeks');box.replaceChildren();const nomeSel=$('#nome').value,exCount=nomeSel?userCount(nomeSel):0,absent=!!(nomeSel&&myAus(nomeSel));$('#cota').textContent=nomeSel?(absent?'Ausente justificado neste mês: não é possível se inscrever.':exCount+' de '+MAX_P+' cultos usados neste mês'):'';
  weeks(settings.month).forEach(wk=>{const w=h('div',{class:'wk'});
-  cols(wk).forEach(([t,dt,lab,sp,sf])=>{if(!dt)return;if(sp){if(t==='m')w.append(h('div',{class:'row sp'},dm(dt)+' · Consagração (manhã) e Santa Ceia (noite): todos os diáconos'));return}const k=key(dt,t),me=curId(k),lim=t!=='n',n=svcCount(k,me),full=lim&&n>=SVC_MAX,locked=!isAdmin&&!!me&&signups.some(s=>s.id===me),femNo=!!sf&&!!nomeSel&&!WOMEN.has(nomeSel),on=sel.has(k)&&!full&&!locked;if(!on)sel.delete(k);const capped=!on&&!(me&&signups.some(s=>s.id===me))&&exCount+sel.size>=MAX_P;
-   const cb=h('input',{type:'checkbox',id:'c'+k.replace(/\W/g,''),checked:on,disabled:full||locked||capped});
+  cols(wk).forEach(([t,dt,lab,sp,sf])=>{if(!dt)return;if(sp){if(t==='m')w.append(h('div',{class:'row sp'},dm(dt)+' · Consagração (manhã) e Santa Ceia (noite): todos os diáconos'));return}const k=key(dt,t),me=curId(k),lim=t!=='n',n=svcCount(k,me),full=lim&&n>=SVC_MAX,locked=!isAdmin&&!!me&&signups.some(s=>s.id===me),femNo=!!sf&&!!nomeSel&&!WOMEN.has(nomeSel),on=sel.has(k)&&!full&&!locked&&!absent;if(!on)sel.delete(k);const capped=!on&&!(me&&signups.some(s=>s.id===me))&&exCount+sel.size>=MAX_P;
+   const cb=h('input',{type:'checkbox',id:'c'+k.replace(/\W/g,''),checked:on,disabled:full||locked||capped||absent});
    const rs=h('select',{'aria-label':'Função em '+dm(dt),disabled:!on},rolesFor(t).map(r=>{const rf=ROLE_MAX[r]&&roleCount(k,r,me)>=ROLE_MAX[r];return h('option',{value:r,selected:sel.get(k)===r,disabled:rf},r+(rf?' (completo)':''))}));
    const row=h('div',{class:'row'+(on?' on':'')},cb,h('label',{for:cb.id},(t==='w'?'Qua ':'Dom ')+dm(dt)+' · '+(t==='w'?(sf?'noite · femininas':'noite'):t==='m'?'manhã':settings.pm.toLowerCase()),h('small',{style:'display:block;color:var(--mu)'},(femNo?'Atenção: quarta das femininas (normalmente só diaconisas) · ':'')+(capped?'Limite de 2 serviços atingido':full?'Completo (6/6)':lim?n+'/6 vagas ocupadas':n+' inscritos')+(me&&signups.some(s=>s.id===me)?(locked?' · já inscrito(a): só o administrador altera':' · você já está nesta escala'):''))),rs);
    cb.addEventListener('change',()=>{rs.disabled=!cb.checked;row.classList.toggle('on',cb.checked);cb.checked?sel.set(k,rs.value):sel.delete(k);if(cb.checked&&femNo){const mm=$('#msg');mm.className='msg';mm.textContent='Aviso: esta é a quarta das femininas, normalmente só para diaconisas. Você pode se inscrever mesmo assim.'}renderForm();const f=document.getElementById(cb.id);if(f)f.focus()});
@@ -245,6 +259,7 @@ $('#send').addEventListener('click',async()=>{const msg=$('#msg');msg.className=
  const nome=$('#nome').value;
  if(!nome){msg.className='msg err';msg.textContent='Selecione seu nome na lista antes de entrar na escala.';$('#nome').focus();return}
  if(!sel.size){msg.className='msg err';msg.textContent='Marque pelo menos um culto.';return}
+ if(myAus(nome)){msg.className='msg err';msg.textContent='Você está como ausente justificado neste mês. Fale com um administrador para reverter.';return}
  {const ex=userCount(nome),add=[...sel.keys()].filter(k=>!signups.some(s=>s.id===slug(nome)+'_'+k.replace('|','_'))).length;
   if(ex+add>MAX_P){msg.className='msg err';msg.textContent='Cada pessoa pode servir em no máximo 2 cultos no mês. Você já tem '+ex+'.';return}}
  const femAviso=!WOMEN.has(nome)&&[...sel.keys()].some(isFemKey);
@@ -360,10 +375,27 @@ function renderPix(){const ok=!!(settings.pix&&settings.pix.key);$('#pixBox').hi
 $('#pixCopy').addEventListener('click',async()=>{const t=$('#pixCode'),m=$('#pixMsg');try{await navigator.clipboard.writeText(t.value);m.textContent='Código copiado.'}catch(e){t.select();m.textContent='Selecione e copie o código acima.'}});
 ['#pk','#pn','#pc'].forEach(i=>$(i).addEventListener('change',()=>{settings.pix={key:$('#pk').value.trim(),name:$('#pn').value.trim(),city:$('#pc').value.trim()};setSettings();renderPix()}));
 function renderRank(){const box=$('#rankBox');box.hidden=!isAdmin;if(!isAdmin)return;
- const m=new Map();NAMES.forEach(n=>m.set(n,{n,t:0,w:0,d:0,c:0}));
- signups.forEach(s=>{if(!s.name)return;const o=m.get(s.name)||{n:s.name,t:0,w:0,d:0,c:0};o.t++;const v=String(s.svc);if(v.startsWith('ceia|'))o.c++;else if(v.endsWith('|w'))o.w++;else o.d++;m.set(s.name,o)});
+ const m=new Map(),mk=()=>({t:0,w:0,d:0,c:0,j:0,cur:false});NAMES.forEach(n=>m.set(n,{n,...mk()}));
+ signups.forEach(s=>{if(!s.name)return;const o=m.get(s.name)||{n:s.name,...mk()},v=String(s.svc);
+  if(v.startsWith('aus|')){o.j++;if(v==='aus|'+settings.month)o.cur=true}
+  else{o.t++;if(v.startsWith('ceia|'))o.c++;else if(v.endsWith('|w'))o.w++;else o.d++}m.set(s.name,o)});
  const all=[...m.values()].sort((a,b)=>b.t-a.t||a.n.localeCompare(b.n,'pt-BR'));
- $('#rank').replaceChildren(h('table',{class:'rk'},h('tr',{},['#','Diácono','Total','Quartas','Domingos','Santa Ceia'].map(x=>h('th',{},x))),all.map((o,i)=>h('tr',{class:i<10&&o.t>0?'top':''},h('td',{},String(i+1)),h('td',{class:'n'},(i<10&&o.t>0?'★ ':'')+o.n),h('td',{},h('b',{},String(o.t))),h('td',{},String(o.w)),h('td',{},String(o.d)),h('td',{},String(o.c))))))}
+ $('#rank').replaceChildren(h('table',{class:'rk'},h('tr',{},['#','Diácono','Total','Quartas','Domingos','Santa Ceia','Just.'].map(x=>h('th',{},x))),all.map((o,i)=>h('tr',{class:i<10&&o.t>0?'top':''},h('td',{},String(i+1)),h('td',{class:'n'},(i<10&&o.t>0?'★ ':'')+o.n+(o.cur?' · ausente justificado':'')),h('td',{},h('b',{},String(o.t))),h('td',{},String(o.w)),h('td',{},String(o.d)),h('td',{},String(o.c)),h('td',{},String(o.j))))));
+ const js=signups.filter(s=>String(s.svc).startsWith('aus|')).sort((a,b)=>String(b.svc).localeCompare(String(a.svc))||a.name.localeCompare(b.name,'pt-BR')),jb=$('#just');
+ if(!js.length){jb.replaceChildren(h('p',{style:'padding:12px;margin:0'},'Nenhuma ausência justificada.'));return}
+ jb.replaceChildren(h('table',{class:'rk'},h('tr',{},['Diácono','Mês','Motivo',''].map(x=>h('th',{},x))),js.map(s=>{const[y,mo]=s.svc.slice(4).split('-').map(Number);return h('tr',{},h('td',{class:'n'},s.name),h('td',{},MESES[mo-1]+'/'+y),h('td',{},s.role),h('td',{},h('button',{class:'nm',type:'button',onclick:()=>store.del(s.id)},'Remover')))})))}
+const ausId=n=>slug(n)+'_aus_'+settings.month,ausKey=()=>'aus|'+settings.month;
+function myAus(n){return signups.find(s=>s.id===ausId(n))}
+$('#jm').addEventListener('change',()=>{$('#jtWrap').hidden=$('#jm').value!=='Outros'});
+$('#jn').addEventListener('change',()=>{const m=$('#ajmsg'),a=$('#jn').value?myAus($('#jn').value):null;m.className='msg';m.textContent=a?'Já justificado neste mês.':''});
+$('#jsend').addEventListener('click',async()=>{const m=$('#ajmsg'),er=t=>{m.className='msg err';m.textContent=t};m.className='msg';
+ const n=$('#jn').value,mot=$('#jm').value,tx=$('#jt').value.trim().replace(/\s+/g,' ').slice(0,60);
+ if(!n){er('Selecione seu nome.');$('#jn').focus();return}
+ if(mot==='Outros'&&!tx){er('Escreva o motivo.');$('#jt').focus();return}
+ if(!isAdmin&&myAus(n)){er('Você já justificou neste mês. Só o administrador pode alterar.');return}
+ const c=userCount(n);if(c>0){er('Você já está inscrito(a) em '+c+(c>1?' cultos':' culto')+' neste mês. Peça ao administrador para remover antes de justificar.');return}
+ try{await store.set(ausId(n),{name:n,svc:ausKey(),role:mot==='Outros'?'Outros: '+tx:mot,ts:Date.now()});m.textContent=n+', sua ausência foi registrada.';$('#jn').value='';$('#jt').value='';renderForm()}
+ catch(e){er('Não foi possível salvar. Tente de novo.')}});
 
 function waLink(t){const d=String(t||'').replace(/\D/g,'');if(d.length<10)return null;return 'https://wa.me/'+(d.length<=11?'55'+d:d)+'?text='+encodeURIComponent('Olá! Preciso de ajuda com a escala do diaconato.')}
 function renderWa(){const wa=settings.wa||{},box=$('#waBtns');box.replaceChildren();
@@ -384,7 +416,7 @@ tab('insc');
 
 /* ---------- início ---------- */
 try{const c=JSON.parse(localStorage.getItem(LS+'-cfg')||'null');if(c&&c.month){settings=c}}catch(e){}
-NAMES.forEach(n=>{$('#nome').append(h('option',{value:n},n));$('#cn').append(h('option',{value:n},n))});$('#nome').addEventListener('change',renderForm);$('#cn').addEventListener('change',renderCeia);$('#cd').addEventListener('change',e=>{if(!e.target.value)return;settings.ceia=e.target.value;renderAll();setSettings()});localLoad();renderAll();$('#cfgBox').hidden=false;$('#mode').textContent='Modo local · inscrições só neste aparelho';
+NAMES.forEach(n=>{$('#nome').append(h('option',{value:n},n));$('#cn').append(h('option',{value:n},n));$('#jn').append(h('option',{value:n},n))});$('#nome').addEventListener('change',renderForm);$('#cn').addEventListener('change',renderCeia);$('#cd').addEventListener('change',e=>{if(!e.target.value)return;settings.ceia=e.target.value;renderAll();setSettings()});localLoad();renderAll();$('#cfgBox').hidden=false;$('#mode').textContent='Modo local · inscrições só neste aparelho';
 (function(){try{
  if(!window.firebase||!FIREBASE_CONFIG.apiKey||FIREBASE_CONFIG.apiKey.startsWith('COLE')){$('#mode').textContent='Modo local · inscrições só neste aparelho';return}
  firebase.initializeApp(FIREBASE_CONFIG);
